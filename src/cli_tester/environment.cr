@@ -1,9 +1,8 @@
 require "file_utils"
 
 module CliTester
-  # Represents the isolated temporary environment for a single test run.
-  # Provides methods for file system manipulation and command execution
-  # within this environment.
+  # Manages an isolated testing environment with temporary directory.
+  # Provides file system operations and process execution capabilities.
   class Environment
     # The absolute path to the temporary directory for this environment.
     getter path : String
@@ -110,16 +109,18 @@ module CliTester
     end
 
     # Executes a command synchronously within the environment's directory.
-    # Waits for the command to complete and captures its output.
+    # Executes a command and returns captured results.
     #
-    # Example: `result = env.execute("my_cli --version")`
+    # @param command [String] Shell command to execute
+    # @param input [String | Bytes] Input for stdin (optional)
+    # @param env [Hash(String, String)] Environment variables (optional)
+    # @return [ExecutionResult] Captured output and exit status
     #
-    # Arguments:
-    #   command: The command string to execute (e.g., "ls -l").
-    #   input: Optional string or bytes to pass to the command's standard input.
-    #   env: Optional hash of environment variables to set for the command.
-    #
-    # Returns: An `ExecutionResult` containing stdout, stderr, and status.
+    # Example:
+    # ```
+    # result = env.execute("echo 'hello'", env: {"DEBUG" => "1"})
+    # result.stdout.should contain("hello")
+    # ```
     def execute(command : String, input : String | Bytes | Nil = nil, env : Hash(String, String) | Nil = nil) : ExecutionResult
       stdout = IO::Memory.new
       stderr = IO::Memory.new
@@ -150,11 +151,18 @@ module CliTester
     # result = process.wait_for_finish
     # ```
     #
-    # Arguments:
-    #   command: The command string to execute.
-    #   env: Optional hash of environment variables to set for the command.
+    # Spawns an interactive process for step-by-step control.
     #
-    # Returns: An `InteractiveProcess` instance.
+    # @param command [String] Command to start
+    # @param env [Hash(String, String)] Environment variables (optional)
+    # @return [InteractiveProcess] Controller for process interaction
+    #
+    # Example:
+    # ```
+    # process = env.spawn("my_cli --interactive")
+    # process.wait_for_text("Username:")
+    # process.write_text("test_user")
+    # ```
     def spawn(command : String, env : Hash(String, String) | Nil = nil) : InteractiveProcess
       process = Process.new(
         command,

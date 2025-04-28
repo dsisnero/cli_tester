@@ -2,8 +2,8 @@ require "process"
 require "log"
 
 module CliTester
-  # Represents an interactively running process started by `Environment#spawn`.
-  # Provides methods to interact with the process's stdin, stdout, and stderr.
+  # Controls an interactively running process with I/O management.
+  # Handles output buffering and provides synchronization methods.
   class InteractiveProcess
     getter process : Process
     getter stdin : IO
@@ -109,10 +109,17 @@ module CliTester
     # Waits until the specified text appears in stdout or stderr.
     # Raises Timeout::Error if the text doesn't appear within the timeout.
     #
-    # Arguments:
-    #   text: The text to wait for.
-    #   stream: `:stdout` or `:stderr` to check.
-    #   timeout: Maximum time to wait (default: 5 seconds).
+    # Waits for specific text to appear in process output.
+    #
+    # @param text_to_find [String] Text pattern to wait for
+    # @param stream [Symbol] :stdout or :stderr to monitor
+    # @param timeout [Time::Span] Maximum wait duration
+    # @raise [Timeout::Error] If text not found before timeout
+    #
+    # Example:
+    # ```
+    # process.wait_for_text("Password:", timeout: 10.seconds)
+    # ```
     def wait_for_text(text_to_find : String, stream : Symbol = :stdout, timeout : Time::Span = 5.seconds)
       check_running!
       buffer = if stream == :stdout
@@ -213,7 +220,13 @@ module CliTester
       @exit_channel.receive?
     end
 
-    #   # Forcefully terminates the process.
+    # Forcefully terminates the process and cleans up resources.
+    # Sends SIGKILL and closes all I/O pipes.
+    #
+    # Example:
+    # ```
+    # process.kill if timeout
+    # ```
     def kill
       if running? && !killed?
         Log.warn { "Killing process (PID: #{@process.pid})" }

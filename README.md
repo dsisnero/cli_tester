@@ -1,30 +1,64 @@
 # cli_tester
 
-TODO: Write a description here
+Crystal testing utility for CLI applications. Provides isolated environments and tools to test command-line interactions.
+
+## Features
+- 💻 **Isolated Environments**: Automatic temp directory creation/cleanup
+- 📂 **File System Helpers**: Create/read/remove files & directories
+- ⚡ **Command Execution**: Run commands and capture stdout/stderr
+- 🤖 **Interactive Testing**: Send input and wait for output patterns
+- 🧹 **Automatic Cleanup**: Ensures test artifacts are removed
 
 ## Installation
 
-1. Add the dependency to your `shard.yml`:
+Add to `shard.yml`:
+```yaml
+dependencies:
+  cli_tester:
+    github: dsisnero/cli_tester
+```
 
-   ```yaml
-   dependencies:
-     cli_tester:
-       github: dsisnero/cli_tester
-   ```
-
-2. Run `shards install`
+Then run:
+```bash
+shards install
+```
 
 ## Usage
 
 ```crystal
 require "cli_tester"
+
+describe "MyCLI" do
+  it "tests CLI behavior" do
+    CliTester.test do |env|
+      # Setup test environment
+      env.write_file("input.txt", "test data")
+      env.make_dir("output")
+
+      # Run and verify command
+      result = env.execute("my_cli --input input.txt --output output/")
+      result.success?.should be_true
+      env.exists?("output/results.csv").should be_true
+
+      # Test interactive prompts
+      process = env.spawn("my_cli --interactive")
+      process.wait_for_text("Enter name:")
+      process.write_text("Tester")
+      process.wait_for_finish
+      process.stdout.should contain("Hello Tester")
+    end
+  end
+end
 ```
 
-TODO: Write usage instructions here
-
 ## Development
+```bash
+# Run tests
+crystal spec
 
-TODO: Write development instructions here
+# Build documentation
+crystal docs
+```
 
 ## Contributing
 

@@ -1,6 +1,11 @@
 module CliTester
-  # Represents the results of executing a command via `Environment#execute`.
-  # Captures standard output, standard error, and process status information.
+  # Contains results from a command execution via `Environment#execute`.
+  #
+  # Provides:
+  # - Captured standard output
+  # - Captured standard error
+  # - Process exit status
+  # - Success checking
   struct ExecutionResult
     # The captured standard output from the executed command as a String.
     # Contains all text written to stdout during command execution.
@@ -27,8 +32,12 @@ module CliTester
       @status.exit_code
     end
 
-    # Determines if the command executed successfully.
-    # @return [Bool] True if exit code is zero, false otherwise
+    # Returns true if process exited with status code 0
+    #
+    # Example:
+    # ```
+    # result.success?.should be_true
+    # ```
     def success? : Bool
       @status.success?
     end

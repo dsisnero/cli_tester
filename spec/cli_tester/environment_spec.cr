@@ -1,8 +1,9 @@
 require "../spec_helper"
 
 describe CliTester::Environment do
+  # Tests basic directory creation and removal functionality
   describe "file system helpers" do
-    it "creates and manages directories with make_dir and remove_dir" do
+    it "creates nested directories and verifies existence" do
       CliTester.test do |env|
         env.make_dir("a/b/c")
         env.exists?("a").should be_true
@@ -103,6 +104,7 @@ describe CliTester::Environment do
     end
   end
 
+  # Tests command execution with various input types
   describe "#execute" do
     it "executes a simple command and captures output" do
       CliTester.test do |env|
@@ -143,7 +145,8 @@ describe CliTester::Environment do
       end
     end
 
-    it "passes input bytes to the command" do
+    it "handles binary input through pipes" do
+      # Tests binary data handling
       CliTester.test do |env|
         input_bytes = Bytes[1, 2, 3, 4]
         # Use od to verify binary input (output format depends on od version/flags)
