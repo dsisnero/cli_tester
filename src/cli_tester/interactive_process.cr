@@ -41,7 +41,7 @@ module CliTester
       @running = false
       @exit_channel.send(status)
       Log.debug { "Process exited with status: #{status.exit_code}" }
-    rescue ex : Process::Error
+    rescue ex : IO::Error # Changed from Process::Error
       # This might happen if the process was killed externally or couldn't start
       @running = false
       Log.error(exception: ex) { "Error waiting for process exit" }
