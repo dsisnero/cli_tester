@@ -218,7 +218,7 @@ module CliTester
       if running? && !killed?
         Log.warn { "Killing process (PID: #{@process.pid})" }
         @killed = true
-        @process.kill(Signal::KILL)
+        @process.signal(Signal::KILL)
         @running = false # Assume killed means not running
         close_pipes
         # Ensure exit channel gets a status even if killed
