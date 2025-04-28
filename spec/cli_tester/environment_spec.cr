@@ -39,14 +39,25 @@ describe CliTester::Environment do
       end
     end
 
-    it "removes files with remove_file" do
+    it "removes files with remove_file and leaves other files untouched" do
       CliTester.test do |env|
+        # Setup: Create two files
         env.write_file("to_remove.txt", "content")
+        env.write_file("keep.txt", "important")
+
+        # Pre-conditions
         env.exists?("to_remove.txt").should be_true
+        env.exists?("keep.txt").should be_true
+        env.exists?("non_existent.txt").should be_false
+
+        # Action: Remove one file and attempt to remove non-existent
         env.remove_file("to_remove.txt")
+        env.remove_file("non_existent.txt")
+
+        # Verify post-conditions
         env.exists?("to_remove.txt").should be_false
-        # Removing non-existent file should not raise
-        expect_not_raises { env.remove_file("non_existent.txt") }
+        env.exists?("keep.txt").should be_true # Ensure other file remains
+        env.exists?("non_existent.txt").should be_false
       end
     end
 
