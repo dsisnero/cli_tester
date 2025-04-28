@@ -32,7 +32,73 @@ module CliTester
       end
     end
 
-    # TODO: Add file system helper methods (writeFile, readFile, exists?, etc.)
+    # Creates a directory within the environment.
+    # Creates parent directories if they don't exist.
+    #
+    # Example: `env.make_dir("some/nested/dir")`
+    def make_dir(path : String)
+      FileUtils.mkdir_p(resolve(path))
+    end
+
+    # Writes content to a file within the environment.
+    # Creates parent directories if they don't exist.
+    # Overwrites the file if it already exists.
+    #
+    # Example: `env.write_file("my_file.txt", "File content")`
+    def write_file(path : String, content : String | Bytes)
+      full_path = resolve(path)
+      FileUtils.mkdir_p(File.dirname(full_path))
+      File.write(full_path, content)
+    end
+
+    # Reads the content of a file within the environment.
+    # Raises an exception if the file does not exist.
+    #
+    # Example: `content = env.read_file("my_file.txt")`
+    def read_file(path : String) : String
+      File.read(resolve(path))
+    end
+
+    # Reads the content of a file within the environment as bytes.
+    # Raises an exception if the file does not exist.
+    #
+    # Example: `bytes = env.read_file_bytes("my_binary_file")`
+    def read_file_bytes(path : String) : Bytes
+      File.read_bytes(resolve(path))
+    end
+
+    # Removes a file within the environment.
+    # Does nothing if the file does not exist.
+    #
+    # Example: `env.remove_file("my_file.txt")`
+    def remove_file(path : String)
+      FileUtils.rm(resolve(path), force: true)
+    end
+
+    # Removes a directory and its contents recursively within the environment.
+    # Does nothing if the directory does not exist.
+    #
+    # Example: `env.remove_dir("some/dir")`
+    def remove_dir(path : String)
+      FileUtils.rm_rf(resolve(path))
+    end
+
+    # Checks if a file or directory exists within the environment.
+    #
+    # Example: `if env.exists?("my_file.txt") ...`
+    def exists?(path : String) : Bool
+      File.exists?(resolve(path))
+    end
+
+    # Lists the names of files and directories directly within the specified
+    # directory path inside the environment. Does not include "." or "..".
+    # Raises an exception if the directory does not exist.
+    #
+    # Example: `entries = env.ls(".")`
+    def ls(path : String) : Array(String)
+      Dir.entries(resolve(path)).reject { |entry| entry == "." || entry == ".." }
+    end
+
     # TODO: Add command execution method (execute)
   end
 end
