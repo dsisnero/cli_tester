@@ -224,14 +224,14 @@ module CliTester
         # Ensure exit channel gets a status even if killed
         @exit_channel.send(Process::Status.new(-1)) unless @exit_channel.closed?
       end
-    rescue ex : Process::Error
+    rescue ex : IO::Error
       Log.error(exception: ex) { "Error killing process" }
       # Might already be dead
       @running = false
     end
 
     private def check_running!
-      raise Process::Error.new("Process is not running.") unless running?
+      raise IO::Error.new("Process is not running.") unless running?
     end
   end
 end
