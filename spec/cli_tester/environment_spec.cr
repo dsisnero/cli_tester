@@ -180,4 +180,48 @@ describe CliTester::Environment do
       end
     end
   end
+
+  describe "#with_mocks" do
+    class TestMock < CliTester::MockAdapter
+      getter called = false
+
+      def apply_mocks
+        @called = true
+      end
+    end
+
+    it "applies mocks during execution" do
+      CliTester.test do |env|
+        mock = TestMock.new
+
+        env.with_mocks(mock) do
+          # Test that mock was applied
+          mock.called.should be_true
+
+          # Example command that would use mocks
+          result = env.execute("echo 'mock test'")
+          result.stdout.should contain("mock test")
+        end
+      end
+    end
+  end
+
+  describe "output normalization" do
+    it "normalizes stdout and stderr" do
+      CliTester.test do |env|
+        env.write_file("test.txt", "content")
+
+        # Command that outputs paths and colors
+        result = env.execute("echo -e '\\e[32m#{env.path}/test.txt\\e[0m'")
+
+        # Raw output should contain actual path and color codes
+        result.stdout.should contain(env.path)
+        result.stdout.should contain("\e[32m")
+
+        # Normalized output should have placeholders and no colors
+        normalized = result.normalized_stdout(env)
+        normalized.should eq "{base}/test.txt\n"
+      end
+    end
+  end
 end
