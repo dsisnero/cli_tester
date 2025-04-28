@@ -1,5 +1,5 @@
 require "process"
-require "timeout"
+require "crystal-timeout/timeout"
 require "log"
 
 module CliTester
