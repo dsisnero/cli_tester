@@ -8,7 +8,7 @@ describe CliTester::Environment do
         env.exists?("a").should be_true
         env.exists?("a/b").should be_true
         env.exists?("a/b/c").should be_true
-        Dir.info(File.join(env.path, "a/b/c")).type.should eq File::Type::Directory
+        File.directory?(File.join(env.path, "a/b/c")).should be_true
 
         env.remove_dir("a")
         env.exists?("a").should be_false
