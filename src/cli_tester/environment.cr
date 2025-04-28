@@ -82,7 +82,7 @@ module CliTester
     #
     # Example: `env.remove_file("my_file.txt")`
     def remove_file(path : String)
-      FileUtils.rm(resolve(path), force: true)
+      FileUtils.rm_rf(resolve(path))
     end
 
     # Removes a directory and its contents recursively within the environment.

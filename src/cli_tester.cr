@@ -11,7 +11,7 @@ require "./cli_tester/*"
 #
 # ## Basic Usage
 #
-# ```crystal
+# ```
 # require "cli_tester"
 #
 # CliTester.test do |env|
@@ -38,7 +38,7 @@ module CliTester
   #   result.stdout.should eq("hello\n")
   # end
   # ```
-  def self.test(&block : Environment -> _)
+  def self.test(& : Environment -> _)
     env = Environment.new
     begin
       env.chdir do
