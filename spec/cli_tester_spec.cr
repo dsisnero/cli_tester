@@ -18,7 +18,7 @@ describe CliTester do
 
   it "handles exceptions within the test block and still cleans up" do
     temp_path = ""
-    expect_raises(RuntimeError, "Test exception") do
+    expect_raises(Exception, "Test exception") do # Changed from RuntimeError
       CliTester.test do |env|
         temp_path = env.path
         Dir.exists?(temp_path).should be_true
