@@ -46,7 +46,7 @@ module CliTester
       @running = false
       Log.error(exception: ex) { "Error waiting for process exit" }
       # Ensure channel receives *something* if wait fails unexpectedly
-      @exit_channel.send(Process::Status.new(-1, Signal::KILL)) unless @exit_channel.closed?
+      @exit_channel.send(Process::Status.new(-1)) unless @exit_channel.closed?
       ensure
         # Close pipes if they are still open
         close_pipes
