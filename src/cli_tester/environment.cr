@@ -72,7 +72,9 @@ module CliTester
     #
     # Example: `bytes = env.read_file_bytes("my_binary_file")`
     def read_file_bytes(path : String) : Bytes
-      File.read(resolve(path), mode: "rb")
+      File.open(resolve(path), "rb") do |file|
+        file.getb_to_end
+      end
     end
 
     # Removes a file within the environment.
