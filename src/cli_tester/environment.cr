@@ -33,7 +33,7 @@ module CliTester
 
     # Changes the current working directory to the environment's temporary
     # directory for the duration of the block.
-    def chdir(&block)
+    def chdir(&)
       Dir.cd(@path) do
         yield
       end
@@ -125,7 +125,7 @@ module CliTester
       # Use Process.run which handles shell expansion if needed
       status = Process.run(
         command,
-        shell: true, # Allows shell features like pipes and redirection within the command string
+        shell: true,                                # Allows shell features like pipes and redirection within the command string
         input: stdin || Process::Redirect::Inherit, # Use provided input or inherit
         output: stdout,
         error: stderr,
