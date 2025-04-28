@@ -114,120 +114,121 @@ module CliTester
     #   text: The text to wait for.
     #   stream: `:stdout` or `:stderr` to check.
     #   timeout: Maximum time to wait (default: 5 seconds).
-    def wait_for_text(text_to_find : String, stream : Symbol = :stdout, timeout : Time::Span = 5.seconds)
-      check_running!
-      buffer = stream == :stdout ? @stdout_buffer : @stderr_buffer
-      start_time = Time.monotonic
-      current_pos = 0 # Position in the buffer to start searching from
+  #   def wait_for_text(text_to_find : String, stream : Symbol = :stdout, timeout : Time::Span = 5.seconds)
+  #     check_running!
+  #     buffer = stream == :stdout ? @stdout_buffer : @stderr_buffer
+  #     start_time = Time.monotonic
+  #     current_pos = 0 # Position in the buffer to start searching from
 
-      log.debug { "Waiting for text in #{stream}: #{text_to_find.inspect}" }
+  #     log.debug { "Waiting for text in #{stream}: #{text_to_find.inspect}" }
 
-      loop do
-        # Check remaining time
-        elapsed = Time.monotonic - start_time
-        if elapsed >= timeout
-          raise Timeout::Error.new("Timeout waiting for text: #{text_to_find.inspect} in #{stream}")
-        end
+  #     loop do
+  #       # Check remaining time
+  #       elapsed = Time.monotonic - start_time
+  #       if elapsed >= timeout
+  #         raise Timeout::Error.new("Timeout waiting for text: #{text_to_find.inspect} in #{stream}")
+  #       end
 
-        # Read current buffer content non-destructively
-        buffer.rewind
-        current_content = buffer.gets_to_end
-        buffer.seek(0, IO::Seek::End) # Reset position for writers
+  #       # Read current buffer content non-destructively
+  #       buffer.rewind
+  #       current_content = buffer.gets_to_end
+  #       buffer.seek(0, IO::Seek::End) # Reset position for writers
 
-        # Search only the new part of the buffer
-        if current_pos < current_content.bytesize
-          search_area = current_content.byte_slice(current_pos)
-          if search_area.includes?(text_to_find)
-            log.debug { "Found text: #{text_to_find.inspect}" }
-            return # Text found
-          end
-          current_pos = current_content.bytesize
-        end
+  #       # Search only the new part of the buffer
+  #       if current_pos < current_content.bytesize
+  #         search_area = current_content.byte_slice(current_pos)
+  #         if search_area.includes?(text_to_find)
+  #           log.debug { "Found text: #{text_to_find.inspect}" }
+  #           return # Text found
+  #         end
+  #         current_pos = current_content.bytesize
+  #       end
 
-        # If process exited while waiting, check one last time then raise
-        unless @running?
-          buffer.rewind
-          # Read final content after process exit
-          final_content = buffer.gets_to_end
-          if final_content.byte_slice(current_pos).includes?(text_to_find)
-            log.debug { "Found text after process exit: #{text_to_find.inspect}" }
-            return
-          else
-            raise Process::Error.new("Process exited before text was found: #{text_to_find.inspect}")
-          end
-        end
+  #       # If process exited while waiting, check one last time then raise
+  #       unless @running?
+  #         buffer.rewind
+  #         # Read final content after process exit
+  #         final_content = buffer.gets_to_end
+  #         if final_content.byte_slice(current_pos).includes?(text_to_find)
+  #           log.debug { "Found text after process exit: #{text_to_find.inspect}" }
+  #           return
+  #         else
+  #           raise Process::Error.new("Process exited before text was found: #{text_to_find.inspect}")
+  #         end
+  #       end
 
-        # Sleep briefly before checking again
-        sleep 0.05
-      end
-    end
+  #       # Sleep briefly before checking again
+  #       sleep 0.05
+  #     end
+  #   end
 
-    # Waits for the process to finish execution.
-    # Raises Timeout::Error if the process doesn't finish within the timeout.
-    def wait_for_finish(timeout : Time::Span = 5.seconds) : Process::Status
-      return @exit_channel.receive? || Process::Status.new(-1, Signal::KILL) unless @running? # Already finished
+  #   # Waits for the process to finish execution.
+  #   # Raises Timeout::Error if the process doesn't finish within the timeout.
+  #   def wait_for_finish(timeout : Time::Span = 5.seconds) : Process::Status
+  #     return @exit_channel.receive? || Process::Status.new(-1, Signal::KILL) unless @running? # Already finished
 
-      log.debug { "Waiting for process to finish (timeout: #{timeout})" }
-      status = Timeout.timeout(timeout) do
-        @exit_channel.receive
-      end
-      log.debug { "Process finished with status: #{status.exit_code}" }
-      status
-    rescue ex : Timeout::Error
-      log.warn { "Timeout waiting for process finish. Killing process." }
-      kill # Attempt to kill if timed out
-      raise ex
-    end
+  #     log.debug { "Waiting for process to finish (timeout: #{timeout})" }
+  #     status = Timeout.timeout(timeout) do
+  #       @exit_channel.receive
+  #     end
+  #     log.debug { "Process finished with status: #{status.exit_code}" }
+  #     status
+  #   rescue ex : Timeout::Error
+  #     log.warn { "Timeout waiting for process finish. Killing process." }
+  #     kill # Attempt to kill if timed out
+  #     raise ex
+  #   end
 
-    # Returns all standard output captured so far.
-    def get_stdout : String
-      @stdout_buffer.rewind
-      content = @stdout_buffer.gets_to_end
-      @stdout_buffer.seek(0, IO::Seek::End) # Reset position
-      content
-    end
+  #   # Returns all standard output captured so far.
+  #   def get_stdout : String
+  #     @stdout_buffer.rewind
+  #     content = @stdout_buffer.gets_to_end
+  #     @stdout_buffer.seek(0, IO::Seek::End) # Reset position
+  #     content
+  #   end
 
-    # Returns all standard error captured so far.
-    def get_stderr : String
-      @stderr_buffer.rewind
-      content = @stderr_buffer.gets_to_end
-      @stderr_buffer.seek(0, IO::Seek::End) # Reset position
-      content
-    end
+  #   # Returns all standard error captured so far.
+  #   def get_stderr : String
+  #     @stderr_buffer.rewind
+  #     content = @stderr_buffer.gets_to_end
+  #     @stderr_buffer.seek(0, IO::Seek::End) # Reset position
+  #     content
+  #   end
 
-    # Returns the exit code if the process has finished, otherwise nil.
-    def get_exit_code : Int32?
-      if status = @exit_channel.receive?
-        status.exit_code
-      else
-        nil
-      end
-    end
+  #   # Returns the exit code if the process has finished, otherwise nil.
+  #   def get_exit_code : Int32?
+  #     if status = @exit_channel.receive?
+  #       status.exit_code
+  #     else
+  #       nil
+  #     end
+  #   end
 
-    # Returns the exit status if the process has finished, otherwise nil.
-    def get_status : Process::Status?
-      @exit_channel.receive?
-    end
+  #   # Returns the exit status if the process has finished, otherwise nil.
+  #   def get_status : Process::Status?
+  #     @exit_channel.receive?
+  #   end
 
-    # Forcefully terminates the process.
-    def kill
-      if @running? && !@killed?
-        log.warn { "Killing process (PID: #{@process.pid})" }
-        @killed = true
-        @process.kill(Signal::KILL)
-        @running = false # Assume killed means not running
-        close_pipes
-        # Ensure exit channel gets a status even if killed
-        @exit_channel.send(Process::Status.new(-1, Signal::KILL)) unless @exit_channel.closed?
-      end
-    rescue ex : Process::Error
-      log.error(exception: ex) { "Error killing process" }
-      # Might already be dead
-      @running = false
-    end
+  #   # Forcefully terminates the process.
+  #   def kill
+  #     if @running? && !@killed?
+  #       log.warn { "Killing process (PID: #{@process.pid})" }
+  #       @killed = true
+  #       @process.kill(Signal::KILL)
+  #       @running = false # Assume killed means not running
+  #       close_pipes
+  #       # Ensure exit channel gets a status even if killed
+  #       @exit_channel.send(Process::Status.new(-1, Signal::KILL)) unless @exit_channel.closed?
+  #     end
+  #   rescue ex : Process::Error
+  #     log.error(exception: ex) { "Error killing process" }
+  #     # Might already be dead
+  #     @running = false
+  #   end
 
-    private def check_running!
-      raise Process::Error.new("Process is not running.") unless @running?
-    end
-  end
+  #   private def check_running!
+  #     raise Process::Error.new("Process is not running.") unless @running?
+  #   end
+  # end
+end
 end
