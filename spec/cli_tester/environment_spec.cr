@@ -1,5 +1,14 @@
 require "../spec_helper"
 
+# Mock adapter for testing the with_mocks functionality
+class TestMock < CliTester::MockAdapter
+  getter called = false
+
+  def apply_mocks
+    @called = true
+  end
+end
+
 describe CliTester::Environment do
   # Tests basic directory creation and removal functionality
   describe "file system helpers" do
@@ -182,14 +191,6 @@ describe CliTester::Environment do
   end
 
   describe "#with_mocks" do
-    class TestMock < CliTester::MockAdapter
-      getter called = false
-
-      def apply_mocks
-        @called = true
-      end
-    end
-
     it "applies mocks during execution" do
       CliTester.test do |env|
         mock = TestMock.new
