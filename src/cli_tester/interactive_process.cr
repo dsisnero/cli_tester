@@ -169,7 +169,7 @@ module CliTester
       return @exit_channel.receive? || Process::Status.new(-1, Signal::KILL) unless @running? # Already finished
 
       log.debug { "Waiting for process to finish (timeout: #{timeout})" }
-      status = ::timeout(timeout) do
+      status = Timeout.timeout(timeout) do
         @exit_channel.receive
       end
       log.debug { "Process finished with status: #{status.exit_code}" }
