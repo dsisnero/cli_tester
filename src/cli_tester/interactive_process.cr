@@ -222,7 +222,7 @@ module CliTester
         @running = false # Assume killed means not running
         close_pipes
         # Ensure exit channel gets a status even if killed
-        @exit_channel.send(Process::Status.new(-1, Signal::KILL)) unless @exit_channel.closed?
+        @exit_channel.send(Process::Status.new(-1)) unless @exit_channel.closed?
       end
     rescue ex : Process::Error
       Log.error(exception: ex) { "Error killing process" }
