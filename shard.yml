@@ -7,3 +7,16 @@ authors:
 crystal: '>= 1.16.1'
 
 license: MIT
+name: cli_tester
+version: 0.1.0
+
+authors:
+  - Your Name <your.email@example.com> # TODO: Update with your details
+
+description: |
+  A Crystal shard for testing Command Line Interface (CLI) applications
+  by executing them as a user would, inspired by cli-testing-library.
+
+crystal: ">= 1.0.0"
+
+license: MIT # Or your preferred license
