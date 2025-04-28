@@ -11,7 +11,8 @@ module CliTester
 
     # Creates a new temporary directory for the test environment.
     def initialize
-      @path = Dir.mktmpdir("cli_tester-")
+      @path = File.join(Dir.tempdir, "cli_tester-#{Random::Secure.hex(8)}")
+      Dir.mkdir(@path)
     end
 
     # Removes the temporary directory and all its contents.
