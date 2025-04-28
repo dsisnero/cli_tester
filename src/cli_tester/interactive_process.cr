@@ -149,7 +149,7 @@ module CliTester
           buffer.rewind
           # Explicitly type the variable. This shouldn't be strictly necessary
           # but might resolve the parser's confusion based on the error message.
-          final_content : String = buffer.gets_to_end
+          final_content = buffer.gets_to_end
           if final_content.byte_slice(current_pos).includes?(text_to_find)
             log.debug { "Found text after process exit: #{text_to_find.inspect}" }
             return
