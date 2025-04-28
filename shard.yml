@@ -1,0 +1,9 @@
+name: cli_tester
+version: 0.1.0
+
+authors:
+  - Dominic Sisneros <dsisnero@gmail.com>
+
+crystal: '>= 1.16.1'
+
+license: MIT
