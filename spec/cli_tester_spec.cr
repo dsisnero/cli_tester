@@ -1,15 +1,6 @@
 require "./spec_helper"
 
 describe CliTester do
-  # TODO: Write tests
-
-  it "works" do
-    false.should eq(true)
-  end
-end
-require "./spec_helper"
-
-describe CliTester do
   it "provides a temporary environment via .test and cleans up" do
     temp_path = ""
     CliTester.test do |env|
