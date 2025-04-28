@@ -1,5 +1,7 @@
 require "file_utils"
 require "process"
+require "log" # Added for InteractiveProcess logging
+
 require "./cli_tester/*"
 
 # CliTester provides utilities for end-to-end testing of CLI applications.

@@ -7,6 +7,7 @@ module CliTester
   class Environment
     # The absolute path to the temporary directory for this environment.
     getter path : String
+    private getter interactive_processes = [] of InteractiveProcess
 
     # Creates a new temporary directory for the test environment.
     def initialize
@@ -14,8 +15,14 @@ module CliTester
     end
 
     # Removes the temporary directory and all its contents.
+    # Also ensures any spawned interactive processes are killed.
     # This is typically called automatically by `CliTester.test`.
     def cleanup
+      # Kill any running interactive processes first
+      @interactive_processes.each &.kill
+      @interactive_processes.clear
+
+      # Then remove the temp directory
       FileUtils.rm_rf(@path) if Dir.exists?(@path)
     end
 
@@ -99,6 +106,66 @@ module CliTester
       Dir.entries(resolve(path)).reject { |entry| entry == "." || entry == ".." }
     end
 
-    # TODO: Add command execution method (execute)
+    # Executes a command synchronously within the environment's directory.
+    # Waits for the command to complete and captures its output.
+    #
+    # Example: `result = env.execute("my_cli --version")`
+    #
+    # Arguments:
+    #   command: The command string to execute (e.g., "ls -l").
+    #   input: Optional string or bytes to pass to the command's standard input.
+    #   env: Optional hash of environment variables to set for the command.
+    #
+    # Returns: An `ExecutionResult` containing stdout, stderr, and status.
+    def execute(command : String, input : String | Bytes | Nil = nil, env : Hash(String, String) | Nil = nil) : ExecutionResult
+      stdout = IO::Memory.new
+      stderr = IO::Memory.new
+      stdin = input ? IO::Memory.new(input) : nil
+
+      # Use Process.run which handles shell expansion if needed
+      status = Process.run(
+        command,
+        shell: true, # Allows shell features like pipes and redirection within the command string
+        input: stdin || Process::Redirect::Inherit, # Use provided input or inherit
+        output: stdout,
+        error: stderr,
+        env: env,
+        chdir: @path # Ensure command runs in the temp dir
+      )
+
+      ExecutionResult.new(stdout.to_s, stderr.to_s, status)
+    end
+
+    # Spawns a command interactively within the environment's directory.
+    # Returns an `InteractiveProcess` object to interact with the running command.
+    #
+    # Example:
+    # ```
+    # process = env.spawn("my_interactive_cli")
+    # process.wait_for_text("Enter your name:")
+    # process.write_text("Tester")
+    # result = process.wait_for_finish
+    # ```
+    #
+    # Arguments:
+    #   command: The command string to execute.
+    #   env: Optional hash of environment variables to set for the command.
+    #
+    # Returns: An `InteractiveProcess` instance.
+    def spawn(command : String, env : Hash(String, String) | Nil = nil) : InteractiveProcess
+      process = Process.new(
+        command,
+        shell: true,
+        input: Process::Redirect::Pipe,
+        output: Process::Redirect::Pipe,
+        error: Process::Redirect::Pipe,
+        env: env,
+        chdir: @path
+      )
+
+      interactive_process = InteractiveProcess.new(process)
+      @interactive_processes << interactive_process
+      interactive_process
+    end
   end
 end
