@@ -1,4 +1,5 @@
 require "file_utils"
+require "./mock_adapter" # Require mock adapter for the new method
 
 module CliTester
   # Manages an isolated testing environment with temporary directory.
@@ -177,6 +178,30 @@ module CliTester
       interactive_process = InteractiveProcess.new(process)
       @interactive_processes << interactive_process
       interactive_process
+    end
+
+    # Applies mocks defined by a `MockAdapter` within a block.
+    # Ensures mocks are active only during the block's execution.
+    #
+    # @param adapter [MockAdapter] The mock adapter instance to apply.
+    # @yield The block of code to execute with mocks enabled.
+    #
+    # Example:
+    # ```
+    # env.with_mocks(MyApiMock.new) do
+    #   # Run commands that depend on the mocked behavior
+    #   result = env.execute("my-cli make-api-call")
+    #   # Assert based on mocked response
+    # end
+    # ```
+    def with_mocks(adapter : MockAdapter, &)
+      adapter.apply_mocks
+      begin
+        yield
+      ensure
+        # Optional: Call teardown if the adapter supports it
+        # adapter.teardown_mocks if adapter.responds_to?(:teardown_mocks)
+      end
     end
   end
 end

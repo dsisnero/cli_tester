@@ -1,5 +1,8 @@
+require "./output_normalizer"
+
 module CliTester
   # Contains results from a command execution via `Environment#execute`.
+  # Includes raw output/status and provides methods for normalized output.
   #
   # Provides:
   # - Captured standard output
@@ -51,6 +54,24 @@ module CliTester
       io << "  stdout_size: #{stdout.bytesize} bytes,\n"
       io << "  stderr_size: #{stderr.bytesize} bytes\n"
       io << ")"
+    end
+
+    # Returns the standard output normalized using `OutputNormalizer`.
+    # Requires the `Environment` instance to know the base path for normalization.
+    #
+    # @param env [Environment] The environment in which the command was executed.
+    # @return [String] Normalized standard output.
+    def normalized_stdout(env : Environment) : String
+      OutputNormalizer.normalize(@stdout, env.path)
+    end
+
+    # Returns the standard error normalized using `OutputNormalizer`.
+    # Requires the `Environment` instance to know the base path for normalization.
+    #
+    # @param env [Environment] The environment in which the command was executed.
+    # @return [String] Normalized standard error.
+    def normalized_stderr(env : Environment) : String
+      OutputNormalizer.normalize(@stderr, env.path)
     end
   end
 end
