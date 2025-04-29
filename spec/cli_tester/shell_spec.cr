@@ -3,8 +3,9 @@ require "../spec_helper"
 describe CliTester::Shell do
   it "escapes POSIX commands" do
     {% if !flag?(:win32) %}
-      CliTester::Shell.escape("echo 'test'").should eq "echo 'test'"
-      CliTester::Shell.escape("file with spaces").should eq "file\\ with\\ spaces"
+      # Before: .should eq "echo 'test'"
+      CliTester::Shell.escape("echo 'test'").should eq "'echo '\\''test'\\'''"
+      CliTester::Shell.escape("file with spaces").should eq "'file with spaces'"
     {% end %}
   end
 

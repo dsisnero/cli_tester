@@ -50,7 +50,7 @@ module CliTester
     def self.clean_special_chars(string : String) : String
       # This regex keeps printable ASCII, newline, and tab
       # `[[:print:]]` includes letters, digits, punctuation, space.
-      string.gsub(/[^[[:print:]]\n\t]/, "")
+      string.gsub(/[^[:print:]\n\t]/, "")
     end
 
     # Applies a standard set of normalizations to a string.

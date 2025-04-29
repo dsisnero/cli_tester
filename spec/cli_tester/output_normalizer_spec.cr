@@ -8,7 +8,7 @@ describe CliTester::OutputNormalizer do
 
   it "normalizes paths" do
     base_path = "/tmp/cli_test_123"
-    input = "Output in #{base_path}/subdir and #{Dir.home}/config"
+    input = "Output in #{base_path}/subdir and #{Path.home}/config"
     expected = "Output in {base}/subdir and {home}/config"
     CliTester::OutputNormalizer.normalize_paths(input, base_path).should eq expected
   end
@@ -20,7 +20,7 @@ describe CliTester::OutputNormalizer do
 
   it "full normalization flow" do
     base_path = "/tmp/cli_test_123"
-    input = "\e[32mOutput in #{base_path}/subdir \u0001and #{Dir.home}/config\e[0m\n"
+    input = "\e[32mOutput in #{base_path}/subdir \u0001and #{Path.home}/config\e[0m\n"
     expected = "Output in {base}/subdir and {home}/config\n"
 
     normalized = CliTester::OutputNormalizer.normalize(input, base_path)

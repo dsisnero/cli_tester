@@ -24,10 +24,9 @@ module CliTester
         end
         "\"#{escaped}\""
       {% else %}
-        # POSIX sh/bash/zsh escaping:
-        # - Surround with single quotes.
-        # - Escape internal single quotes: replace ' with '\'' (end quote, escaped quote, start quote).
-        "'#{argument.gsub("'", "'\\''")}'"
+        # POSIX escaping (simplified):
+        return "''" if argument.empty?
+        "'#{argument.gsub(/'/, "'\\\\''")}'"
       {% end %}
     end
 

@@ -213,7 +213,8 @@ describe CliTester::Environment do
         env.write_file("test.txt", "content")
 
         # Command that outputs paths and colors
-        result = env.execute("echo -e '\\e[32m#{env.path}/test.txt\\e[0m'")
+        # Use printf via sh for better escape code handling than echo -e
+        result = env.execute("sh -c 'printf \"\\033[32m#{env.path}/test.txt\\033[0m\\n\"'")
 
         # Raw output should contain actual path and color codes
         result.stdout.should contain(env.path)
