@@ -9,7 +9,7 @@ module CliTester
     #
     # @param argument [String] The argument string to escape.
     # @return [String] The escaped argument, suitable for interpolation into a command string.
-    def self.escape_argument(argument : String) : String
+    def self.escape(argument : String) : String
       {% if flag?(:win32) %}
         # Windows cmd.exe escaping:
         # - Surround with double quotes.
