@@ -9,8 +9,8 @@ module CliTester
     #
     # Example: `strip_ansi_codes("\e[31mRed\e[0m") # => "Red"`
     def self.strip_ansi_codes(string : String) : String
-      # Use Colorize's built-in method which is robust
-      string.decolorize # Remove extra 'p' in method name
+      # Replace with ANSI code regex removal
+      string.gsub(/\e\[\d+(;\d+)*m/, "")
     end
 
     # Normalizes paths within a string.
