@@ -1,6 +1,8 @@
 module CliTester
-  # Provides cross-platform shell argument escaping utilities.
-  # Handles differences between POSIX shells (bash/zsh) and Windows cmd.exe.
+  # Provides cross-platform shell utilities including:
+  # - Argument escaping
+  # - XDG environment configuration
+  # - Platform-specific command formatting
   #
   # Example POSIX escaping:
   #   escape("file with spaces") => "'file with spaces'"
@@ -38,5 +40,24 @@ module CliTester
     # def self.build_command(executable : String, args : Array(String)) : String
     #   ...
     # end
+
+    # Constructs a command that safely sets XDG_CONFIG_HOME before
+    # execution. Handles platform differences:
+    # - POSIX: VAR=value command
+    # - Windows: set VAR=value && command
+    #
+    # @param command [String] Command to execute
+    # @param config_home [String] Path for XDG_CONFIG_HOME
+    # @return [String] Platform-appropriate command string
+    def self.xdg_command(command : String, config_home : String) : String
+      escaped_config_home = escape(config_home)
+      {% if flag?(:win32) %}
+        # Windows: Use 'set VAR=VALUE && command'
+        "set XDG_CONFIG_HOME=#{escaped_config_home} && #{command}"
+      {% else %}
+        # POSIX: Use 'VAR=VALUE command'
+        "XDG_CONFIG_HOME=#{escaped_config_home} #{command}"
+      {% end %}
+    end
   end
 end

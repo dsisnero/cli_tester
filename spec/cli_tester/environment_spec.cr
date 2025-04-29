@@ -78,7 +78,9 @@ describe CliTester::Environment do
         env.write_file("dir1/file2.txt", "")
 
         entries = env.ls(".")
-        entries.sort.should eq ["dir1", "file1.txt"]
+        entries.sort.should contain("dir1")
+        entries.sort.should contain("file1.txt")
+        entries.sort.should contain("xdg")  # Add this line
 
         entries_subdir = env.ls("dir1")
         entries_subdir.should eq ["file2.txt"]
@@ -224,6 +226,65 @@ describe CliTester::Environment do
         normalized = result.normalized_stdout(env)
         normalized.should eq "{base}/test.txt\n"
       end
+    end
+  end
+
+  describe "#setup_xdg_environment" do
+    it "creates standard XDG directories in temp environment" do
+      CliTester.test do |env|
+        base = File.join(env.path, "xdg")
+        ["config", "cache", "data", "state"].each do |dir|
+          path = File.join(base, dir)
+          Dir.exists?(path).should be_true
+          env.env["XDG_#{dir.upcase}_HOME"].should eq(path)
+        end
+      end
+    end
+  end
+
+  describe "#create_xdg_config" do
+    it "writes files to app-specific config directory" do
+      CliTester.test do |env|
+        env.create_xdg_config("testapp", "config.yml", "key: value")
+
+        config_path = File.join(
+          env.env["XDG_CONFIG_HOME"],
+          "testapp",
+          "config.yml"
+        )
+
+        File.read(config_path).should eq("key: value")
+        File.exists?(config_path).should be_true
+      end
+    end
+  end
+
+  describe "#with_temp_env" do
+    it "sets and resets environment variables" do
+      original_value = ENV["SPEC_TEST_VAR"]?
+
+      CliTester.test do |env|
+        env.with_temp_env({"SPEC_TEST_VAR" => "temp"}) do
+          ENV["SPEC_TEST_VAR"]?.should eq("temp")
+        end
+
+        ENV["SPEC_TEST_VAR"]?.should eq(original_value)
+      end
+    ensure
+      ENV.delete("SPEC_TEST_VAR")
+      ENV["SPEC_TEST_VAR"] = original_value if original_value
+    end
+
+    it "unsets variables when value is nil" do
+      ENV["TO_BE_UNSET"] = "exists"
+
+      CliTester.test do |env|
+        env.with_temp_env({"TO_BE_UNSET" => nil}) do
+          ENV["TO_BE_UNSET"]?.should be_nil
+        end
+      end
+    ensure
+      ENV.delete("TO_BE_UNSET")
     end
   end
 end

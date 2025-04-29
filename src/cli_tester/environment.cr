@@ -3,16 +3,48 @@ require "./mock_adapter" # Require mock adapter for the new method
 
 module CliTester
   # Manages an isolated testing environment with temporary directory.
-  # Provides file system operations and process execution capabilities.
+  # Provides file system operations, XDG directory management,
+  # environment variable isolation, and process execution capabilities.
   class Environment
     # The absolute path to the temporary directory for this environment.
     getter path : String
+    # Internal environment variables, including XDG paths
+    getter env : Hash(String, String)
+    # Stores original ENV values temporarily modified by `with_temp_env`
+    @original_env = Hash(String, String?).new
     private getter interactive_processes = [] of InteractiveProcess
 
     # Creates a new temporary directory for the test environment.
+    # Initializes internal environment variables, including XDG paths.
     def initialize
       @path = File.join(Dir.tempdir, "cli_tester-#{Random::Secure.hex(8)}")
       Dir.mkdir(@path)
+      @env = Hash(String, String).new
+      setup_xdg_environment
+    end
+
+    # Sets up standard XDG base directories (CONFIG_HOME, CACHE_HOME, etc)
+    # within the test environment. These are automatically created and
+    # destroyed with the environment. Accessed via @env hash.
+    private def setup_xdg_environment
+      xdg_base = File.join(@path, "xdg")
+      make_dir(xdg_base) # Ensure the base XDG directory exists
+
+      xdg_paths = {
+        "XDG_CONFIG_HOME" => File.join(xdg_base, "config"),
+        "XDG_CACHE_HOME"  => File.join(xdg_base, "cache"),
+        "XDG_DATA_HOME"   => File.join(xdg_base, "data"),
+        "XDG_STATE_HOME"  => File.join(xdg_base, "state"),
+      }
+
+      # Create each XDG directory
+      xdg_paths.each_value do |path|
+        # Use FileUtils.mkdir_p directly as make_dir resolves relative paths
+        FileUtils.mkdir_p(path)
+      end
+
+      # Merge these paths into the environment's internal env hash
+      @env.merge!(xdg_paths)
     end
 
     # Removes the temporary directory and all its contents.
@@ -109,6 +141,51 @@ module CliTester
       Dir.entries(resolve(path)).reject { |entry| entry == "." || entry == ".." }
     end
 
+    # Creates a configuration file within the isolated XDG_CONFIG_HOME
+    # directory structure. Files are automatically cleaned up with the
+    # test environment.
+    #
+    # @param app_name [String] The application's config directory name
+    # @param filename [String] Config file to create
+    # @param content [String | Bytes] File contents
+    def create_xdg_config(app_name : String, filename : String, content : String | Bytes)
+      # Ensure XDG_CONFIG_HOME exists in our internal env
+      config_home = @env["XDG_CONFIG_HOME"]? || raise "XDG_CONFIG_HOME not set up in environment"
+      app_config_dir = File.join(config_home, app_name)
+      FileUtils.mkdir_p(app_config_dir) # Ensure the app-specific config dir exists
+
+      # Write the file using the absolute path
+      File.write(File.join(app_config_dir, filename), content)
+    end
+
+    # Temporarily modifies environment variables for the duration of
+    # the block. Restores original values automatically.
+    #
+    # @param env_vars [Hash(String, String?)] Variables to set (nil unsets)
+    # @yield Block where temporary vars are active
+    def with_temp_env(env_vars : Hash(String, String?))
+      env_vars.each do |k, v|
+        @original_env[k] = ENV[k]? # Store original value (or nil if not set)
+        if v.nil?
+          ENV.delete(k) # Unset the variable if value is nil
+        else
+          ENV[k] = v    # Set the variable
+        end
+      end
+
+      yield # Execute the block with the temporary environment
+    ensure
+      # Restore original environment variables
+      @original_env.each do |k, original_value|
+        if original_value.nil?
+          ENV.delete(k) # If it was originally unset, unset it again
+        else
+          ENV[k] = original_value # Otherwise, restore the original value
+        end
+      end
+      @original_env.clear # Clear the temporary storage
+    end
+
     # Executes a command synchronously within the environment's directory.
     # Executes a command and returns captured results.
     #
@@ -134,7 +211,8 @@ module CliTester
         input: stdin || Process::Redirect::Inherit, # Use provided input or inherit
         output: stdout,
         error: stderr,
-        env: env,
+        # Merge internal env (@env) with any explicitly passed env vars
+        env: @env.merge(env || {} of String => String),
         chdir: @path # Ensure command runs in the temp dir
       )
 

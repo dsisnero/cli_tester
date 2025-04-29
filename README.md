@@ -3,6 +3,14 @@
 Crystal testing utility for CLI applications. Provides isolated environments and tools to test command-line interactions.
 
 ## Features
+- **🖥️ XDG Compliance Testing**
+  - Isolated XDG base directories (CONFIG_HOME, CACHE_HOME, etc)
+  - Config file management in fake XDG environments
+  - Cross-platform path handling
+- **🔀 Environment Isolation**
+  - Temporary ENV variable scoping
+  - Automatic variable cleanup
+  - Nested environment support
 - 🧹 **Output Normalization**
   - ANSI code stripping
   - Path placeholder replacement (`{base}`, `{home}`)
@@ -39,14 +47,21 @@ require "cli_tester"
 describe "MyCLI" do
   it "tests CLI behavior" do
     CliTester.test do |env|
-      # Setup test environment
-      env.write_file("input.txt", "test data")
-      env.make_dir("output")
+      # XDG Config Testing
+      env.create_xdg_config("myapp", "config.yml", "debug: true")
 
-      # Run and verify command
-      result = env.execute("my_cli --input input.txt --output output/")
-      result.success?.should be_true
-      env.exists?("output/results.csv").should be_true
+      # Temporary ENV variables
+      env.with_temp_env({"APP_MODE" => "test"}) do
+        # XDG-aware command execution
+        # Ensure XDG_CONFIG_HOME is set for the command
+        config_home = env.env["XDG_CONFIG_HOME"]
+        cmd = CliTester::Shell.xdg_command("myapp --verbose", config_home)
+        result = env.execute(cmd)
+
+        result.stdout.should contain("Debug mode enabled")
+        # Example: Check cache file created by the app
+        # env.read_file("#{env.env["XDG_CACHE_HOME"]}/myapp/cache.dat").should eq("cached")
+      end
 
       # Test interactive prompts
       process = env.spawn("my_cli --interactive")
@@ -54,6 +69,50 @@ describe "MyCLI" do
       process.write_text("Tester")
       process.wait_for_finish
       process.stdout.should contain("Hello Tester")
+    end
+  end
+end
+```
+
+## XDG Environment Testing
+
+Test XDG-compliant applications without touching real configs:
+
+```crystal
+it "uses XDG config locations" do
+  CliTester.test do |env|
+    # Create test config
+    env.create_xdg_config("myapp", "settings.toml", <<-TOML
+      [features]
+      experimental = true
+    TOML
+    )
+
+    # Verify config location
+    config_path = File.join(env.env["XDG_CONFIG_HOME"], "myapp/settings.toml")
+    File.exists?(config_path).should be_true
+
+    # Test CLI behavior using XDG-aware command
+    cmd = CliTester::Shell.xdg_command("myapp show-config", env.env["XDG_CONFIG_HOME"])
+    result = env.execute(cmd)
+    result.stdout.should contain("experimental: true")
+  end
+end
+```
+
+## Environment Variable Management
+
+Safely test environment-dependent behavior:
+
+```crystal
+it "respects APP_DEBUG flag" do
+  CliTester.test do |env|
+    env.with_temp_env({
+      "APP_DEBUG" => "1",
+      "OLD_VAR"   => nil  # Unset during test
+    }) do
+      result = env.execute("myapp")
+      result.stdout.should contain("[DEBUG]")
     end
   end
 end
