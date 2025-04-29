@@ -30,7 +30,7 @@ module CliTester
       # Replace home directory if possible
       begin
         # Prefer ENV["HOME"], fallback to Dir.home, handle potential errors
-        home_dir = ENV["HOME"]? || Dir.home rescue ""
+        home_dir = ENV["HOME"]? || Path.home.to_s
         unless home_dir.empty?
           # Escape home_dir for regex safety
           escaped_home_dir = Regex.escape(home_dir)
