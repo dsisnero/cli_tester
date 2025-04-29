@@ -29,10 +29,13 @@ module CliTester
 
       # Replace home directory if possible
       begin
-        home_dir = Dir.home
-        # Escape home_dir for regex safety
-        escaped_home_dir = Regex.escape(home_dir)
-        str = str.gsub(Regex.new(escaped_home_dir), "{home}")
+        # Prefer ENV["HOME"], fallback to Dir.home, handle potential errors
+        home_dir = ENV["HOME"]? || Dir.home rescue ""
+        unless home_dir.empty?
+          # Escape home_dir for regex safety
+          escaped_home_dir = Regex.escape(home_dir)
+          str = str.gsub(Regex.new(escaped_home_dir), "{home}")
+        end
       rescue ex : ArgumentError # Dir.home might fail if HOME env var isn't set
         # Log warning or ignore? For now, ignore.
       end
