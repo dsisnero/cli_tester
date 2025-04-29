@@ -1,14 +1,18 @@
 module CliTester
-  # Provides cross-platform shell utilities.
+  # Provides cross-platform shell argument escaping utilities.
+  # Handles differences between POSIX shells (bash/zsh) and Windows cmd.exe.
+  #
+  # Example POSIX escaping:
+  #   escape("file with spaces") => "'file with spaces'"
+  #   escape("don't") => "'don'\\''t'"
+  #
+  # Example Windows escaping:
+  #   escape("dir with spaces") => "\"dir with spaces\""
+  #   escape("quotes\"here") => "\"quotes\\\"here\""
   module Shell
-    # Escapes a string for safe use as a single argument in a shell command.
-    # Handles differences between POSIX shells (like bash, zsh) and Windows cmd.exe.
-    #
-    # NOTE: This is a basic implementation. Robust shell escaping can be complex.
-    # Consider using libraries designed for this if complex arguments are needed.
-    #
-    # @param argument [String] The argument string to escape.
-    # @return [String] The escaped argument, suitable for interpolation into a command string.
+    # Escapes a single argument for safe shell interpolation.
+    # @param argument [String] The argument to escape
+    # @return [String] Safe to interpolate in `sh -c "..."` (POSIX) or `cmd /c "..."` (Windows)
     def self.escape(argument : String) : String
       {% if flag?(:win32) %}
         # Windows cmd.exe escaping:

@@ -2,8 +2,16 @@ require "file_utils"
 require "colorize" # For ANSI stripping
 
 module CliTester
-  # Provides methods for normalizing CLI output strings.
-  # This includes stripping ANSI codes, normalizing paths, and cleaning characters.
+  # Normalizes CLI output for reliable comparisons in tests.
+  #
+  # Performs these transformations:
+  # 1. Strips ANSI color codes (e.g., \e[32m → removed)
+  # 2. Replaces temp paths with {base} and home dir with {home}
+  # 3. Removes non-printable chars (keeps \t and \n)
+  #
+  # Example:
+  #   Input: "\e[32m/tmp/cli-test-abc123/file.txt\e[0m"
+  #   Output: "{base}/file.txt"
   module OutputNormalizer
     # Strips ANSI escape codes (like colors) from a string.
     #

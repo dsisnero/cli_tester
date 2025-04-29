@@ -2,8 +2,14 @@ require "process"
 require "log"
 
 module CliTester
-  # Controls an interactively running process with I/O management.
-  # Handles output buffering and provides synchronization methods.
+  # Controls long-running interactive processes with I/O management.
+  # Enables testing of CLI tools that prompt for input.
+  #
+  # Example:
+  #   process = env.spawn("my-cli --interactive")
+  #   process.wait_for_text("Username:")
+  #   process.write_text("testuser")
+  #   process.wait_for_finish
   class InteractiveProcess
     getter process : Process
     getter stdin : IO
