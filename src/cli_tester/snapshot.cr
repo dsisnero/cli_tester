@@ -30,10 +30,10 @@ module CliTester
           # TODO: Implement a proper diff algorithm/library
           # Basic diff for now:
           diff_message = "Snapshot mismatch for '#{snapshot_file}'\n"
-          diff_message += "--- Expected\n".colorize(:red)
-          diff_message += "#{expected}\n".colorize(:red)
-          diff_message += "+++ Actual\n".colorize(:green)
-          diff_message += "#{actual}\n".colorize(:green)
+          diff_message += "--- Expected\n".colorize(:red).to_s
+          diff_message += "#{expected}\n".colorize(:red).to_s
+          diff_message += "+++ Actual\n".colorize(:green).to_s
+          diff_message += "#{actual}\n".colorize(:green).to_s
 
           error_message = message || diff_message
           raise Exception.new(error_message) # Or specific assertion error type
