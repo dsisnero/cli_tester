@@ -321,10 +321,10 @@ describe CliTester::Environment do
         end
 
         # Verify binary exists
-        File.exists?(binary_path).should be_true
+        File.exists?(binary_path.not_nil!).should be_true
 
         # Execute compiled binary
-        result = env.execute(binary_path)
+        result = env.execute(binary_path.not_nil!)
         result.stdout.should contain("TEST_SHARD_OUTPUT")
         result.exit_code.should eq(42)
       end
@@ -356,7 +356,7 @@ describe CliTester::Environment do
         end
         # Check if the binary path contains the expected target name 'main'
         # The actual binary name might have .exe on Windows
-        File.basename(binary_path).should match(/^main(\.exe)?$/)
+        File.basename(binary_path.not_nil!).should match(/^main(\.exe)?$/)
       end
     end
   end
