@@ -8,8 +8,8 @@ require "./cli_tester/execution_result"
 require "./cli_tester/interactive_process"
 require "./cli_tester/output_normalizer" # Added
 require "./cli_tester/mock_adapter"      # Added
-require "./cli_tester/snapshot"         # Added
-require "./cli_tester/shell"            # Added
+require "./cli_tester/snapshot"          # Added
+require "./cli_tester/shell"             # Added
 
 # CliTester provides utilities for end-to-end testing of CLI applications.
 #
