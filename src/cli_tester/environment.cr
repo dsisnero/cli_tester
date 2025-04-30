@@ -1,5 +1,8 @@
 require "file_utils"
 require "./mock_adapter" # Require mock adapter for the new method
+require "yaml"           # For shard_binary YAML parsing
+require "random/secure"  # For temp dir naming in initialize
+require "log"            # For logging in shard_binary
 
 module CliTester
   # Manages an isolated testing environment with temporary directory.
