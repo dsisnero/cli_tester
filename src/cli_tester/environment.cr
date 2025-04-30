@@ -311,17 +311,29 @@ module CliTester
           # Get target configuration and main file path
           main_file = begin
             targets_node = shard_yml["targets"]?
-            target_config = if targets_node && targets_node.is_a?(YAML::Nodes::Mapping)
-                              targets_node.as_h[target_name]?
-                            else
-                              nil
-                            end
+            target_config = nil # Initialize target_config
 
-            # Try getting 'main' from target config, default to src/target_name.cr
-            main_path_node = target_config.try(&.[]?("main"))
+            if targets_node && targets_node.is_a?(YAML::Nodes::Mapping)
+              # Iterate through targets to find matching name by node value
+              targets_node.as_h.each do |key_node, value_node|
+                if key_node.is_a?(YAML::Nodes::Scalar) && key_node.value == target_name
+                  target_config = value_node # Store the found target config node
+                  break
+                end
+              end
+            end
+
+            # Try getting 'main' from the found target config node
+            main_path_node = if target_config && target_config.is_a?(YAML::Nodes::Mapping)
+                               target_config["main"]? # Access 'main' key within the target config node
+                             else
+                               nil
+                             end
+
             if main_path_node && main_path_node.is_a?(YAML::Nodes::Scalar)
-              main_path_node.as_s
+              main_path_node.value # Use .value to get the string content
             else
+              # Default if 'main' not found or target_config is not a mapping
               "src/#{target_name}.cr"
             end
           end

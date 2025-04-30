@@ -305,10 +305,12 @@ describe CliTester::Environment do
         YAML
         )
 
-        # Create source file
+        # Create source file using environment helpers
         src_dir = File.join(test_shard_dir, "src")
-        Dir.mkdir(src_dir)
-        File.write(File.join(src_dir, "main.cr"), <<-CR
+        # Use env.make_dir to create the directory within the temp env
+        env.make_dir(File.join("test_shard", "src"))
+        # Use env.write_file to write the source file within the temp env
+        env.write_file(File.join("test_shard", "src", "main.cr"), <<-CR
           puts "TEST_SHARD_OUTPUT"
           exit 42
         CR
