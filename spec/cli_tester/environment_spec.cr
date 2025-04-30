@@ -80,7 +80,7 @@ describe CliTester::Environment do
         entries = env.ls(".")
         entries.sort.should contain("dir1")
         entries.sort.should contain("file1.txt")
-        entries.sort.should contain("xdg")  # Add this line
+        entries.sort.should contain("xdg") # Add this line
 
         entries_subdir = env.ls("dir1")
         entries_subdir.should eq ["file2.txt"]
