@@ -1,5 +1,40 @@
 require "../spec_helper"
 
+# Helper to set up a fake project structure within the test environment
+# This allows ShardBinary.configure (run during spec_helper require)
+# to find *this* shard.yml when tests are run from the fake project dir.
+private def setup_fake_project(env : CliTester::Environment, name : String = "fake_project")
+  project_dir = File.join(env.path, name)
+  env.make_dir(File.join(name, "src")) # Use env helper
+
+  # Create shard.yml within the fake project dir
+  env.write_file(File.join(name, "shard.yml"), <<-YAML
+    name: #{name}
+    version: 0.1.0
+    targets:
+      #{name}_target:
+        main: src/main.cr
+      another_target:
+        main: src/another.cr
+  YAML
+  )
+
+  # Create main source file
+  env.write_file(File.join(name, "src", "main.cr"), <<-CR
+    puts "FAKE_PROJECT_OUTPUT"
+    puts ARGV.join(" ")
+    exit 11
+  CR
+  )
+  # Create another source file
+  env.write_file(File.join(name, "src", "another.cr"), <<-CR
+    puts "ANOTHER_TARGET_OUTPUT"
+    exit 22
+  CR
+  )
+  project_dir # Return the path to the fake project root
+end
+
 # Mock adapter for testing the with_mocks functionality
 class TestMock < CliTester::MockAdapter
   getter called = false
@@ -290,43 +325,9 @@ describe CliTester::Environment do
 
   # Tests related to compiling shard binaries from the project under test
   describe "#shard_binary" do
-    # Helper to set up a fake project structure within the test environment
-    # This allows ShardBinary.configure (run during spec_helper require)
-    # to find *this* shard.yml when tests are run from the fake project dir.
-    def setup_fake_project(env : CliTester::Environment, name : String = "fake_project")
-      project_dir = File.join(env.path, name)
-      env.make_dir(File.join(name, "src")) # Use env helper
-
-      # Create shard.yml within the fake project dir
-      env.write_file(File.join(name, "shard.yml"), <<-YAML
-        name: #{name}
-        version: 0.1.0
-        targets:
-          #{name}_target:
-            main: src/main.cr
-          another_target:
-            main: src/another.cr
-      YAML
-      )
-
-      # Create main source file
-      env.write_file(File.join(name, "src", "main.cr"), <<-CR
-        puts "FAKE_PROJECT_OUTPUT"
-        puts ARGV.join(" ")
-        exit 11
-      CR
-      )
-      # Create another source file
-      env.write_file(File.join(name, "src", "another.cr"), <<-CR
-        puts "ANOTHER_TARGET_OUTPUT"
-        exit 22
-      CR
-      )
-      project_dir # Return the path to the fake project root
-    end
-
     it "compiles and executes the default target binary" do
       CliTester.test do |env|
+        # Call the top-level helper function
         fake_project_dir = setup_fake_project(env)
         original_pwd = Dir.current
 
@@ -369,6 +370,7 @@ describe CliTester::Environment do
 
     it "compiles and executes a specific target binary with build args" do
       CliTester.test do |env|
+        # Call the top-level helper function
         fake_project_dir = setup_fake_project(env)
         original_pwd = Dir.current
         begin
