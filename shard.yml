@@ -10,6 +10,11 @@ description: |
 
 crystal: ">= 1.11.0" # Using Dir.mktmpdir requires >= 1.1.0, let's use a more recent baseline
 
+dependencies:
+  yaml:
+    github: crystal-lang/yaml
+    version: ~> 0.2.0 # Added for Shard parser
+
 targets:
   cli_tester:
     main: src/cli_tester.cr

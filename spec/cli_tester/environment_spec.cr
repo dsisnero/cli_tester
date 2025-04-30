@@ -1,4 +1,5 @@
 require "../spec_helper"
+require "yaml" # Needed for YAML::ParseException in Shard tests
 
 # Helper to set up a fake project structure within the test environment
 # This allows ShardBinary.configure (run during spec_helper require)
@@ -400,6 +401,110 @@ describe CliTester::Environment do
           CliTester::ShardBinary.configure # Restore configuration
         end
       end
+    end
+  end
+end
+
+describe CliTester::Shard do
+  describe ".parse" do
+    it "parses valid shard.yml" do
+      yaml = <<-YAML
+        name: testapp
+        version: 0.1.0
+        targets:
+          main:
+            main: src/main.cr
+          helper:
+            main: src/helper/cli.cr
+      YAML
+
+      shard = CliTester::Shard.parse(yaml)
+      shard.name.should eq "testapp"
+      shard.version.should eq "0.1.0"
+      shard.targets.size.should eq 2
+      shard.targets["main"].main.should eq "src/main.cr"
+      shard.targets["helper"].main.should eq "src/helper/cli.cr"
+    end
+
+    it "requires name field" do
+      yaml = <<-YAML
+        version: 0.1.0
+        targets: {}
+      YAML
+
+      expect_raises(Exception, "Missing required 'name' field in shard.yml") do
+        CliTester::Shard.parse(yaml)
+      end
+    end
+
+    it "requires main in targets" do
+      yaml = <<-YAML
+        name: badapp
+        targets:
+          bad_target: {} # Missing 'main' key inside target definition
+      YAML
+
+      expect_raises(Exception, "Missing 'main' for target bad_target") do
+        CliTester::Shard.parse(yaml)
+      end
+    end
+
+    it "handles empty targets section" do
+      yaml = <<-YAML
+        name: emptyapp
+        targets: {}
+      YAML
+
+      shard = CliTester::Shard.parse(yaml)
+      shard.name.should eq "emptyapp"
+      shard.targets.empty?.should be_true
+    end
+
+    it "handles missing targets section" do
+      yaml = <<-YAML
+        name: notargetsapp
+      YAML
+
+      shard = CliTester::Shard.parse(yaml)
+      shard.name.should eq "notargetsapp"
+      shard.targets.empty?.should be_true
+    end
+
+    it "rejects invalid YAML" do
+      yaml = <<-YAML
+        name: "unclosed quote
+      YAML
+
+      expect_raises(YAML::ParseException) do
+        CliTester::Shard.parse(yaml)
+      end
+    end
+
+    it "ignores unknown top-level fields" do
+      yaml = <<-YAML
+        name: testapp
+        version: 1.0
+        unknown_field: value
+        targets:
+          app:
+            main: src/app.cr
+      YAML
+      shard = CliTester::Shard.parse(yaml)
+      shard.name.should eq "testapp"
+      shard.targets.size.should eq 1
+    end
+
+    it "ignores unknown fields within targets" do
+      yaml = <<-YAML
+        name: testapp
+        targets:
+          app:
+            main: src/app.cr
+            extra: data
+      YAML
+      shard = CliTester::Shard.parse(yaml)
+      shard.targets["app"].main.should eq "src/app.cr"
+      # No error should be raised
     end
   end
 end

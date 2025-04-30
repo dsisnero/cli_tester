@@ -1,9 +1,9 @@
-require "yaml"
 require "random/secure"
 require "log"
 require "process"
 require "file_utils"
 require "./environment" # Need Environment for @env
+require "./shard"       # Require the new Shard parser
 
 module CliTester
   # Handles finding the shard.yml of the project being tested
@@ -44,6 +44,14 @@ module CliTester
       # Keep default values if not found, allowing tests without shard_binary usage
     end
 
+    # Parses the shard.yml file using the dedicated Shard class.
+    # @return [Shard] The parsed shard configuration.
+    # @raise [Exception] If shard.yml is invalid or cannot be read.
+    private def load_shard_config : Shard
+      Log.debug { "Parsing shard file: #{@@shard_file}" }
+      Shard.parse(File.read(@@shard_file))
+    end
+
     # Initializes the compiler helper with a reference to the
     # test environment where the binary will be built.
     # @param env [Environment] The test environment instance.
@@ -63,52 +71,36 @@ module CliTester
         # Change to the project's root directory to resolve relative paths in shard.yml
         Log.debug { "Changing directory to #{@@root_dir} for build" }
         Dir.cd(@@root_dir) do
-          # Parse shard.yml from the configured path
-          Log.debug { "Parsing shard file: #{@@shard_file}" }
-          shard_yml = YAML.parse(File.read(@@shard_file))
+          # Parse shard.yml using the new Shard class
+          shard = load_shard_config
 
-          # Determine target name and main file
+          # Determine target name
           target_name = name || begin
-            targets_node = shard_yml["targets"]?
-            if targets_node && targets_node.is_a?(YAML::Nodes::Mapping) && !targets_node.empty?
-              first_key_node = targets_node.as_h.keys.first?
-              if first_key_node.is_a?(YAML::Nodes::Scalar)
-                first_key_node.value # Use the actual scalar value of the key
-              else
-                # Handle cases where the key might not be a simple string (though unlikely for target names)
-                Log.warn { "First target key in shard.yml is not a simple string, falling back to shard name." }
-                shard_yml["name"].as_s
-              end
+            if !shard.targets.empty?
+              # Use the first target name if available
+              first_target_name = shard.targets.keys.first
+              Log.debug { "No target name specified, using first target found: #{first_target_name}" }
+              first_target_name
             else
-              shard_yml["name"].as_s # Fallback to shard name if no targets section or it's empty
+              # Fallback to shard name if no targets are defined
+              Log.debug { "No targets defined, using shard name: #{shard.name}" }
+              shard.name
             end
           end
           Log.debug { "Determined target name: #{target_name}" }
 
-          # Get target configuration and main file path
-          main_file = begin
-            targets_node = shard_yml["targets"]?
-            target_config = nil
-
-            if targets_node && targets_node.is_a?(YAML::Nodes::Mapping)
-              target_config = targets_node[target_name]? # Access target config by name
-            end
-
-            main_path_node = if target_config && target_config.is_a?(YAML::Nodes::Mapping)
-                               target_config["main"]?
-                             else
-                               nil
-                             end
-
-            if main_path_node && main_path_node.is_a?(YAML::Nodes::Scalar)
-              main_path_node.value
-            else
-              # Default if 'main' not found or target_config is not a mapping
-              default_main = "src/#{target_name}.cr"
-              Log.debug { "Main file not specified for target '#{target_name}', defaulting to #{default_main}" }
-              default_main
-            end
-          end
+          # Get the main file path for the chosen target
+          target = shard.targets[target_name]?
+          main_file = if target
+                        target.main
+                      else
+                        # If the target name doesn't exist in the targets hash,
+                        # or if we fell back to the shard name and there's no matching target,
+                        # try the default convention.
+                        default_main = "src/#{target_name}.cr"
+                        Log.warn { "Target '#{target_name}' not found in shard.yml targets or missing 'main'. Trying default: #{default_main}" }
+                        default_main
+                      end
           Log.debug { "Determined main file: #{main_file}" }
 
           # Verify main file exists relative to the project root (@@root_dir)
@@ -120,6 +112,7 @@ module CliTester
           # Create build directory within the CliTester environment path
           build_dir = File.join(@env.path, "build")
           FileUtils.mkdir_p(build_dir) # Use FileUtils for safety
+          # Use the determined target_name for the output binary name
           binary_path = File.join(build_dir, target_name)
 
           # Add .exe extension for Windows
