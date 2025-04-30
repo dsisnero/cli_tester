@@ -301,7 +301,7 @@ describe CliTester::Environment do
           version: 0.1.0
           targets:
             test_binary:
-              main: src/main.cr
+              main: src/main.cr # Ensure main is specified
         YAML
         )
 

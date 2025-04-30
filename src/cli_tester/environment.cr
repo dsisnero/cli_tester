@@ -297,16 +297,41 @@ module CliTester
           # Parse shard.yml
           shard_yml = YAML.parse(File.read(shard_path))
 
-          # Determine target name
+          # Determine target name and main file
           target_name = name || begin
-            if targets = shard_yml["targets"]?
-              targets.as_h.keys.first?.try(&.to_s) || shard_yml["name"].to_s
+            # Try getting the first target key, fall back to shard name
+            targets_node = shard_yml["targets"]?
+            if targets_node && targets_node.is_a?(YAML::Nodes::Mapping)
+              targets_node.as_h.keys.first?.try(&.to_s) || shard_yml["name"].as_s
             else
-              shard_yml["name"].to_s
+              shard_yml["name"].as_s
             end
           end
 
-          # Create build directory
+          # Get target configuration and main file path
+          main_file = begin
+            targets_node = shard_yml["targets"]?
+            target_config = if targets_node && targets_node.is_a?(YAML::Nodes::Mapping)
+                              targets_node.as_h[target_name]?
+                            else
+                              nil
+                            end
+
+            # Try getting 'main' from target config, default to src/target_name.cr
+            main_path_node = target_config.try(&.[]?("main"))
+            if main_path_node && main_path_node.is_a?(YAML::Nodes::Scalar)
+              main_path_node.as_s
+            else
+              "src/#{target_name}.cr"
+            end
+          end
+
+          # Verify main file exists relative to shard.yml directory
+          unless File.exists?(main_file)
+            raise "Main file '#{main_file}' not found for target '#{target_name}' in shard at '#{File.dirname(shard_path)}'"
+          end
+
+          # Create build directory within the CliTester environment path
           build_dir = File.join(@path, "build")
           Dir.mkdir_p(build_dir)
           binary_path = File.join(build_dir, target_name)
@@ -316,8 +341,8 @@ module CliTester
             binary_path += ".exe"
           {% end %}
 
-          # Build command
-          args = ["build", "-o", binary_path] + build_args
+          # Build command - include the main source file
+          args = ["build", main_file, "-o", binary_path] + build_args
 
           # Execute build
           status = Process.run(
