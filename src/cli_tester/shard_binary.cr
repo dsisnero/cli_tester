@@ -71,11 +71,16 @@ module CliTester
           target_name = name || begin
             targets_node = shard_yml["targets"]?
             if targets_node && targets_node.is_a?(YAML::Nodes::Mapping) && !targets_node.empty?
-              # Use the key of the first entry in the targets mapping
               first_key_node = targets_node.as_h.keys.first?
-              first_key_node.try(&.as_s) || shard_yml["name"].as_s # Fallback to shard name if key isn't scalar
+              if first_key_node.is_a?(YAML::Nodes::Scalar)
+                first_key_node.value # Use the actual scalar value of the key
+              else
+                # Handle cases where the key might not be a simple string (though unlikely for target names)
+                Log.warn { "First target key in shard.yml is not a simple string, falling back to shard name." }
+                shard_yml["name"].as_s
+              end
             else
-              shard_yml["name"].as_s # Fallback to shard name if no targets
+              shard_yml["name"].as_s # Fallback to shard name if no targets section or it's empty
             end
           end
           Log.debug { "Determined target name: #{target_name}" }
