@@ -288,77 +288,115 @@ describe CliTester::Environment do
     end
   end
 
+  # Tests related to compiling shard binaries from the project under test
   describe "#shard_binary" do
-    it "compiles and executes a shard binary" do
+    # Helper to set up a fake project structure within the test environment
+    # This allows ShardBinary.configure (run during spec_helper require)
+    # to find *this* shard.yml when tests are run from the fake project dir.
+    def setup_fake_project(env : CliTester::Environment, name : String = "fake_project")
+      project_dir = File.join(env.path, name)
+      env.make_dir(File.join(name, "src")) # Use env helper
+
+      # Create shard.yml within the fake project dir
+      env.write_file(File.join(name, "shard.yml"), <<-YAML
+        name: #{name}
+        version: 0.1.0
+        targets:
+          #{name}_target:
+            main: src/main.cr
+          another_target:
+            main: src/another.cr
+      YAML
+      )
+
+      # Create main source file
+      env.write_file(File.join(name, "src", "main.cr"), <<-CR
+        puts "FAKE_PROJECT_OUTPUT"
+        puts ARGV.join(" ")
+        exit 11
+      CR
+      )
+      # Create another source file
+      env.write_file(File.join(name, "src", "another.cr"), <<-CR
+        puts "ANOTHER_TARGET_OUTPUT"
+        exit 22
+      CR
+      )
+      project_dir # Return the path to the fake project root
+    end
+
+    it "compiles and executes the default target binary" do
       CliTester.test do |env|
-        # Create a temporary test shard project
-        test_shard_dir = File.join(env.path, "test_shard")
-        Dir.mkdir(test_shard_dir)
+        fake_project_dir = setup_fake_project(env)
+        original_pwd = Dir.current
 
-        # Create shard.yml
-        File.write(File.join(test_shard_dir, "shard.yml"), <<-YAML
-          name: test_shard
-          version: 0.1.0
-          targets:
-            test_binary:
-              main: src/main.cr # Ensure main is specified
-        YAML
-        )
+        # Temporarily change CWD to the fake project so ShardBinary finds its shard.yml
+        # Note: ShardBinary.configure runs *before* this test, so we need to
+        # re-run configure or manually set the paths for the test's scope.
+        # Let's re-run configure for simplicity in this test context.
+        begin
+          Dir.cd(fake_project_dir) do
+            CliTester::ShardBinary.configure # Re-configure based on current (fake project) dir
 
-        # Create source file using environment helpers
-        src_dir = File.join(test_shard_dir, "src")
-        # Use env.make_dir to create the directory within the temp env
-        env.make_dir(File.join("test_shard", "src"))
-        # Use env.write_file to write the source file within the temp env
-        env.write_file(File.join("test_shard", "src", "main.cr"), <<-CR
-          puts "TEST_SHARD_OUTPUT"
-          exit 42
-        CR
-        )
+            # Now call shard_binary - it should use the re-configured paths
+            binary_path = env.shard_binary # No name, should pick 'fake_project_target'
 
-        # Compile and test
-        binary_path = nil
-        Dir.cd(test_shard_dir) do
-          binary_path = env.shard_binary("test_binary")
+            # Verify binary exists in the env's build dir
+            expected_binary_name = "fake_project_target"
+            {% if flag?(:win32) %}
+              expected_binary_name += ".exe"
+            {% end %}
+            expected_path = File.join(env.path, "build", expected_binary_name)
+            binary_path.should eq(expected_path)
+            File.exists?(binary_path).should be_true
+
+            # Execute compiled binary
+            result = env.execute("#{env.shell_escape(binary_path)} arg1") # Escape path just in case
+            result.stdout.should contain("FAKE_PROJECT_OUTPUT")
+            result.stdout.should contain("arg1")
+            result.exit_code.should eq(11)
+          end
+        ensure
+          Dir.cd(original_pwd)
+          # IMPORTANT: Restore original configuration if needed for other tests
+          # This might be complex if tests run in parallel. A better approach
+          # might involve dependency injection for ShardBinary's paths in tests.
+          # For now, assume serial execution or that configure is fast enough.
+          CliTester::ShardBinary.configure # Re-configure back to the actual project
         end
-
-        # Verify binary exists
-        File.exists?(binary_path.not_nil!).should be_true
-
-        # Execute compiled binary
-        result = env.execute(binary_path.not_nil!)
-        result.stdout.should contain("TEST_SHARD_OUTPUT")
-        result.exit_code.should eq(42)
       end
     end
 
-    it "finds shard.yml in parent directories" do
+    it "compiles and executes a specific target binary with build args" do
       CliTester.test do |env|
-        # Create nested directory structure
-        env.make_dir("a/b/c")
+        fake_project_dir = setup_fake_project(env)
+        original_pwd = Dir.current
+        begin
+          Dir.cd(fake_project_dir) do
+            CliTester::ShardBinary.configure # Re-configure
 
-        # Create shard.yml at root
-        File.write(File.join(env.path, "shard.yml"), <<-YAML
-          name: parent_shard
-          version: 0.1.0
-          targets:
-            main:
-              main: src/main.cr # Need a dummy main for parsing
-        YAML
-        )
-        # Create dummy src dir and file for build to pass (even if not executed)
-        env.make_dir("src")
-        env.write_file("src/main.cr", "puts \"dummy\"")
+            # Compile the 'another_target' with a build flag (e.g., --release)
+            # Note: --release might significantly increase compile time in tests
+            binary_path = env.shard_binary("another_target", build_args: ["--no-debug"])
 
+            # Verify binary exists
+            expected_binary_name = "another_target"
+            {% if flag?(:win32) %}
+              expected_binary_name += ".exe"
+            {% end %}
+            expected_path = File.join(env.path, "build", expected_binary_name)
+            binary_path.should eq(expected_path)
+            File.exists?(binary_path).should be_true
 
-        # Test from nested directory
-        binary_path = nil
-        Dir.cd(File.join(env.path, "a/b/c")) do
-          binary_path = env.shard_binary
+            # Execute compiled binary
+            result = env.execute(env.shell_escape(binary_path))
+            result.stdout.should contain("ANOTHER_TARGET_OUTPUT")
+            result.exit_code.should eq(22)
+          end
+        ensure
+          Dir.cd(original_pwd)
+          CliTester::ShardBinary.configure # Restore configuration
         end
-        # Check if the binary path contains the expected target name 'main'
-        # The actual binary name might have .exe on Windows
-        File.basename(binary_path.not_nil!).should match(/^main(\.exe)?$/)
       end
     end
   end

@@ -1,8 +1,9 @@
 require "file_utils"
-require "./mock_adapter" # Require mock adapter for the new method
-require "yaml"           # For shard_binary YAML parsing
-require "random/secure"  # For temp dir naming in initialize
-require "log"            # For logging in shard_binary
+require "./mock_adapter"    # Require mock adapter for the new method
+require "random/secure" # For temp dir naming in initialize
+require "log"           # For logging
+require "./shard_binary"  # Require the new ShardBinary helper
+require "./shell"         # Require Shell for escape helper
 
 module CliTester
   # Manages an isolated testing environment with temporary directory.
@@ -287,101 +288,41 @@ module CliTester
       end
     end
 
-    # Add this at the end of the class
+    # Compiles a target binary from the project being tested (identified by shard.yml)
+    # into this test environment's temporary directory.
+    # Delegates the compilation logic to `CliTester::ShardBinary`.
+    #
+    # @param name [String?] The specific target name from shard.yml to build.
+    #                       If nil, uses the default logic in `ShardBinary.compile`.
+    # @param build_args [Array(String)] Additional arguments for `crystal build`.
+    # @return [String] The absolute path to the compiled binary within the environment.
+    #
+    # Example:
+    # ```
+    # CliTester.test do |env|
+    #   # Compile the default binary for the project under test
+    #   binary = env.shard_binary
+    #   result = env.execute(binary + " --version")
+    #
+    #   # Compile a specific target with release flag
+    #   release_binary = env.shard_binary("my_release_target", ["--release"])
+    #   env.execute(release_binary + " --help")
+    # end
+    # ```
     def shard_binary(name : String? = nil, build_args : Array(String) = [] of String) : String
-      original_dir = Dir.current
-      begin
-        # Search upwards for shard.yml
-        shard_path = find_shard_yml
-        Dir.cd(File.dirname(shard_path)) do
-          # Parse shard.yml
-          shard_yml = YAML.parse(File.read(shard_path))
-
-          # Determine target name and main file
-          target_name = name || begin
-            # Try getting the first target key, fall back to shard name
-            targets_node = shard_yml["targets"]?
-            if targets_node && targets_node.is_a?(YAML::Nodes::Mapping)
-              targets_node.as_h.keys.first?.try(&.to_s) || shard_yml["name"].as_s
-            else
-              shard_yml["name"].as_s
-            end
-          end
-
-          # Get target configuration and main file path
-          main_file = begin
-            targets_node = shard_yml["targets"]?
-            target_config = nil # Initialize target_config
-
-            if targets_node && targets_node.is_a?(YAML::Nodes::Mapping)
-              # Iterate through targets to find matching name by node value
-              targets_node.as_h.each do |key_node, value_node|
-                if key_node.is_a?(YAML::Nodes::Scalar) && key_node.value == target_name
-                  target_config = value_node # Store the found target config node
-                  break
-                end
-              end
-            end
-
-            # Try getting 'main' from the found target config node
-            main_path_node = if target_config && target_config.is_a?(YAML::Nodes::Mapping)
-                               target_config["main"]? # Access 'main' key within the target config node
-                             else
-                               nil
-                             end
-
-            if main_path_node && main_path_node.is_a?(YAML::Nodes::Scalar)
-              main_path_node.value # Use .value to get the string content
-            else
-              # Default if 'main' not found or target_config is not a mapping
-              "src/#{target_name}.cr"
-            end
-          end
-
-          # Verify main file exists relative to shard.yml directory
-          unless File.exists?(main_file)
-            raise "Main file '#{main_file}' not found for target '#{target_name}' in shard at '#{File.dirname(shard_path)}'"
-          end
-
-          # Create build directory within the CliTester environment path
-          build_dir = File.join(@path, "build")
-          Dir.mkdir_p(build_dir)
-          binary_path = File.join(build_dir, target_name)
-
-          # Add .exe extension for Windows
-          {% if flag?(:win32) %}
-            binary_path += ".exe"
-          {% end %}
-
-          # Build command - include the main source file
-          args = ["build", main_file, "-o", binary_path] + build_args
-
-          # Execute build
-          status = Process.run(
-            "crystal",
-            args,
-            output: Process::Redirect::Inherit,
-            error: Process::Redirect::Inherit
-          )
-
-          raise "Build failed with status #{status.exit_code}" unless status.success?
-
-          binary_path
-        end
-      ensure
-        Dir.cd(original_dir)
-      end
+      # Instantiate ShardBinary helper, passing self (the environment)
+      # It uses the class-level configured root_dir/shard_file and
+      # this environment's path for the build output.
+      ShardBinary.new(self).compile(name, build_args)
     end
 
-    private def find_shard_yml : String
-      current_dir = Dir.current
-      while current_dir != "/"
-        path = File.join(current_dir, "shard.yml")
-        return path if File.exists?(path)
-        current_dir = File.dirname(current_dir)
-        break if current_dir == File.dirname(current_dir) # Root directory check
-      end
-      raise "shard.yml not found in directory hierarchy"
+    # Helper to escape a string for safe use as a command-line argument
+    # on the current platform. Delegates to `CliTester::Shell.escape`.
+    # Useful when executing binaries whose paths might contain spaces.
+    #
+    # Example: `env.execute(env.shell_escape(binary_path) + " --arg")`
+    def shell_escape(argument : String) : String
+      CliTester::Shell.escape(argument)
     end
   end
 end
