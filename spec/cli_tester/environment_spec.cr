@@ -287,4 +287,77 @@ describe CliTester::Environment do
       ENV.delete("TO_BE_UNSET")
     end
   end
+
+  describe "#shard_binary" do
+    it "compiles and executes a shard binary" do
+      CliTester.test do |env|
+        # Create a temporary test shard project
+        test_shard_dir = File.join(env.path, "test_shard")
+        Dir.mkdir(test_shard_dir)
+
+        # Create shard.yml
+        File.write(File.join(test_shard_dir, "shard.yml"), <<-YAML
+          name: test_shard
+          version: 0.1.0
+          targets:
+            test_binary:
+              main: src/main.cr
+        YAML
+        )
+
+        # Create source file
+        src_dir = File.join(test_shard_dir, "src")
+        Dir.mkdir(src_dir)
+        File.write(File.join(src_dir, "main.cr"), <<-CR
+          puts "TEST_SHARD_OUTPUT"
+          exit 42
+        CR
+        )
+
+        # Compile and test
+        binary_path = nil
+        Dir.cd(test_shard_dir) do
+          binary_path = env.shard_binary("test_binary")
+        end
+
+        # Verify binary exists
+        File.exists?(binary_path).should be_true
+
+        # Execute compiled binary
+        result = env.execute(binary_path)
+        result.stdout.should contain("TEST_SHARD_OUTPUT")
+        result.exit_code.should eq(42)
+      end
+    end
+
+    it "finds shard.yml in parent directories" do
+      CliTester.test do |env|
+        # Create nested directory structure
+        env.make_dir("a/b/c")
+
+        # Create shard.yml at root
+        File.write(File.join(env.path, "shard.yml"), <<-YAML
+          name: parent_shard
+          version: 0.1.0
+          targets:
+            main:
+              main: src/main.cr # Need a dummy main for parsing
+        YAML
+        )
+        # Create dummy src dir and file for build to pass (even if not executed)
+        env.make_dir("src")
+        env.write_file("src/main.cr", "puts \"dummy\"")
+
+
+        # Test from nested directory
+        binary_path = nil
+        Dir.cd(File.join(env.path, "a/b/c")) do
+          binary_path = env.shard_binary
+        end
+        # Check if the binary path contains the expected target name 'main'
+        # The actual binary name might have .exe on Windows
+        File.basename(binary_path).should match(/^main(\.exe)?$/)
+      end
+    end
+  end
 end

@@ -287,81 +287,64 @@ module CliTester
       end
     end
 
-    # Compiles the Crystal project defined by shard.yml found by searching
-    # upwards from the current directory. Places the compiled binary inside
-    # the environment's temporary directory structure.
-    #
-    # @param name [String?] Optional target name from shard.yml. Defaults to the first target or the shard name.
-    # @param build_args [Array(String)] Additional arguments passed to `crystal build`.
-    # @return [String] The absolute path to the compiled binary within the environment.
-    # @raise [RuntimeError] If shard.yml is not found or compilation fails.
-    #
-    # Example:
-    # ```
-    # CliTester.test do |env|
-    #   # Build the default target
-    #   bin_path = env.shard_binary
-    #   result = env.execute("#{bin_path} --version")
-    #
-    #   # Build a specific target with release flag
-    #   release_bin = env.shard_binary(name: "my_release_target", build_args: ["--release"])
-    #   env.execute("#{release_bin} run")
-    # end
-    # ```
+    # Add this at the end of the class
     def shard_binary(name : String? = nil, build_args : Array(String) = [] of String) : String
-      # Find shard.yml by searching upward from current dir
-      shard_path = find_shard_yml
-      shard_yml = YAML.parse(File.read(shard_path))
-      dir = File.dirname(shard_path)
+      original_dir = Dir.current
+      begin
+        # Search upwards for shard.yml
+        shard_path = find_shard_yml
+        Dir.cd(File.dirname(shard_path)) do
+          # Parse shard.yml
+          shard_yml = YAML.parse(File.read(shard_path))
 
-      # Determine target name
-      target_name = name || if targets = shard_yml["targets"]?
-                              targets.as_h.keys.first?.try(&.to_s) || shard_yml["name"].to_s
-                            else
-                              shard_yml["name"].to_s
-                            end
+          # Determine target name
+          target_name = name || begin
+            if targets = shard_yml["targets"]?
+              targets.as_h.keys.first?.try(&.to_s) || shard_yml["name"].to_s
+            else
+              shard_yml["name"].to_s
+            end
+          end
 
-      # Create build path inside environment's temp dir
-      binary_path = File.join(@path, "bin", target_name) # Changed tmp to bin for clarity
-      {% if flag?(:win32) %}
-        binary_path += ".exe"
-      {% end %}
-      Dir.mkdir_p(File.dirname(binary_path))
+          # Create build directory
+          build_dir = File.join(@path, "build")
+          Dir.mkdir_p(build_dir)
+          binary_path = File.join(build_dir, target_name)
 
-      # Build with crystal
-      args = ["build", "-o", binary_path] + build_args
-      Log.info { "Building shard binary: crystal #{args.join(" ")} in #{dir}" }
-      status = Process.run(
-        "crystal",
-        args,
-        chdir: dir,
-        output: Process::Redirect::Inherit, # Inherit output for build visibility
-        error: Process::Redirect::Inherit
-      )
+          # Add .exe extension for Windows
+          {% if flag?(:win32) %}
+            binary_path += ".exe"
+          {% end %}
 
-      unless status.success?
-        raise "Failed to compile shard binary: crystal #{args.join(" ")} exited with status #{status.exit_code}"
+          # Build command
+          args = ["build", "-o", binary_path] + build_args
+
+          # Execute build
+          status = Process.run(
+            "crystal",
+            args,
+            output: Process::Redirect::Inherit,
+            error: Process::Redirect::Inherit
+          )
+
+          raise "Build failed with status #{status.exit_code}" unless status.success?
+
+          binary_path
+        end
+      ensure
+        Dir.cd(original_dir)
       end
-
-      Log.info { "Successfully built shard binary at: #{binary_path}" }
-      binary_path
     end
 
-    # Searches upwards from the current directory to find shard.yml.
-    # @return [String] The absolute path to shard.yml.
-    # @raise [RuntimeError] If shard.yml is not found.
     private def find_shard_yml : String
       current_dir = Dir.current
-      loop do
+      while current_dir != "/"
         path = File.join(current_dir, "shard.yml")
         return path if File.exists?(path)
-
-        parent_dir = File.dirname(current_dir)
-        # Stop if we reach the root directory
-        break if parent_dir == current_dir || parent_dir.empty?
-        current_dir = parent_dir
+        current_dir = File.dirname(current_dir)
+        break if current_dir == File.dirname(current_dir) # Root directory check
       end
-      raise "shard.yml not found in current directory or any parent directory"
+      raise "shard.yml not found in directory hierarchy"
     end
   end
 end
