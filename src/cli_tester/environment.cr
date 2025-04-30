@@ -163,17 +163,19 @@ module CliTester
     #
     # @param env_vars [Hash(String, String?)] Variables to set (nil unsets)
     # @yield Block where temporary vars are active
-    def with_temp_env(env_vars : Hash(String, String?))
+    def with_temp_env(env_vars : Hash(String, String?), &)
       env_vars.each do |k, v|
         @original_env[k] = ENV[k]? # Store original value (or nil if not set)
         if v.nil?
           ENV.delete(k) # Unset the variable if value is nil
         else
-          ENV[k] = v    # Set the variable
+          ENV[k] = v # Set the variable
         end
       end
 
       yield # Execute the block with the temporary environment
+
+
     ensure
       # Restore original environment variables
       @original_env.each do |k, original_value|
