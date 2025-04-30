@@ -10,4 +10,8 @@ description: |
 
 crystal: ">= 1.11.0" # Using Dir.mktmpdir requires >= 1.1.0, let's use a more recent baseline
 
+targets:
+  cli_tester:
+    main: src/cli_tester.cr
+
 license: MIT
