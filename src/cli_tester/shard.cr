@@ -28,7 +28,7 @@ module CliTester
         parser.read_document do
           parser.read_mapping do
             # Loop while the next event is a scalar (a key)
-            while parser.scalar?
+            while parser.kind.scalar?
               key = parser.read_scalar
 
               case key
@@ -39,13 +39,13 @@ module CliTester
               when "targets"
                 parser.read_mapping do
                   # Loop while the next event is a scalar (a target name)
-                  while parser.kind == YAML::Event::SCALAR
+                  while parser.kind.scalar?
                     target_name = parser.read_scalar
                     main_path = nil
 
                     parser.read_mapping do
                       # Loop while the next event is a scalar (a key within the target, e.g., "main")
-                      while parser.kind == YAML::Event::SCALAR
+                      while parser.kind.scalar?
                         main_key = parser.read_scalar
                         if main_key == "main"
                           main_path = parser.read_scalar
