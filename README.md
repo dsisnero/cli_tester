@@ -3,27 +3,17 @@
 Crystal testing utility for CLI applications. Provides isolated environments and tools to test command-line interactions.
 
 ## Features
+- **🔍 Shard Validation**
+  - Automatic shard.yml detection
+  - Configuration parsing with YAML validation
+  - Required field checking (name, targets)
+  - Precise error locations in YAML files
 - **🖥️ XDG Compliance Testing**
-  - Isolated XDG base directories (CONFIG_HOME, CACHE_HOME, etc)
-  - Config file management in fake XDG environments
-  - Cross-platform path handling
 - **🔀 Environment Isolation**
-  - Temporary ENV variable scoping
-  - Automatic variable cleanup
-  - Nested environment support
-- 🧹 **Output Normalization**
-  - ANSI code stripping
-  - Path placeholder replacement (`{base}`, `{home}`)
-  - Non-printable character filtering
-- 📸 **Snapshot Testing**
-  - Golden master comparisons
-  - Diff visualization
-- 🤖 **Interactive Testing**
-  - Input/response sequencing
-  - Timeout handling
-- ⚡ **Mock Adapters**
-  - Dependency substitution
-  - Scoped mock lifetimes
+- **🧹 Output Normalization**
+- **📸 Snapshot Testing**
+- **🤖 Interactive Testing**
+- **⚡ Mock Adapters**
 
 ## Installation
 
@@ -70,6 +60,31 @@ describe "MyCLI" do
       process.wait_for_finish
       process.stdout.should contain("Hello Tester")
     end
+  end
+end
+```
+
+## Shard Validation
+
+Test your shard.yml configuration:
+
+```crystal
+it "validates shard configuration" do
+  # Get parsed shard configuration
+  shard = CliTester::Shard.parse(File.read(CliTester.shard_file))
+  
+  shard.name.should eq "my_cli"
+  shard.targets["main"].main.should eq "src/main.cr"
+  
+  # Test invalid configurations
+  invalid_yaml = <<-YAML
+    version: 1.0
+    targets:
+      broken: {}
+  YAML
+  
+  expect_raises(YAML::ParseException, /Missing required 'name' field/) do
+    CliTester::Shard.parse(invalid_yaml)
   end
 end
 ```

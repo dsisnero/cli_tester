@@ -45,7 +45,7 @@ module CliTester
           str = str.gsub(Regex.new(escaped_home_dir), "{home}")
         end
       rescue ex : ArgumentError # Dir.home might fail if HOME env var isn't set
-        # Log warning or ignore? For now, ignore.
+      # Log warning or ignore? For now, ignore.
       end
 
       str

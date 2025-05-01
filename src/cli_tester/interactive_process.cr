@@ -53,12 +53,12 @@ module CliTester
       Log.error(exception: ex) { "Error waiting for process exit" }
       # Ensure channel receives *something* if wait fails unexpectedly
       @exit_channel.send(Process::Status.new(-1)) unless @exit_channel.closed?
-      ensure
-        # Close pipes if they are still open
-        close_pipes
-        # Ensure channel is closed if not already
-        @exit_channel.close unless @exit_channel.closed?
-      end
+    ensure
+      # Close pipes if they are still open
+      close_pipes
+      # Ensure channel is closed if not already
+      @exit_channel.close unless @exit_channel.closed?
+    end
 
     # Background fiber task to read from a process pipe into a buffer.
     private def read_output(pipe : IO, buffer : IO::Memory, name : String)
@@ -216,8 +216,6 @@ module CliTester
     def get_exit_code : Int32?
       if status = @exit_channel.receive?
         status.exit_code
-      else
-        nil
       end
     end
 
@@ -254,4 +252,3 @@ module CliTester
     end
   end
 end
-
