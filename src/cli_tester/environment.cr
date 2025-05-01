@@ -1,9 +1,9 @@
 require "file_utils"
-require "./mock_adapter"    # Require mock adapter for the new method
-require "random/secure" # For temp dir naming in initialize
-require "log"           # For logging
-require "./shard_binary"  # Require the new ShardBinary helper
-require "./shell"         # Require Shell for escape helper
+require "./mock_adapter" # Require mock adapter for the new method
+require "random/secure"  # For temp dir naming in initialize
+require "log"            # For logging
+require "./shard_binary" # Require the new ShardBinary helper
+require "./shell"        # Require Shell for escape helper
 
 module CliTester
   # Manages an isolated testing environment with temporary directory.
