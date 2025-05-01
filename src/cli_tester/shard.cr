@@ -73,7 +73,8 @@ module CliTester
       raise "Missing required 'name' field in shard.yml" unless name
       Shard.new(name, version, targets)
     rescue ex : YAML::ParseException
-      raise "Invalid shard.yml: #{ex.message}"
+      # Re-raise with original type and location info, plus our context
+      raise YAML::ParseException.new("Invalid shard.yml: #{ex.message}", ex.line_number, ex.column_number)
     end
   end
 end
