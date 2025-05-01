@@ -64,8 +64,8 @@ module CliTester
     end
 
     # Returns the absolute path for a given relative path within the environment.
-    private def resolve(relative_path)
-      File.expand_path(relative_path, @path)
+    private def resolve(relative_path : String | Path)
+      File.expand_path(relative_path.to_s, @path)
     end
 
     # Changes the current working directory to the environment's temporary
@@ -79,18 +79,18 @@ module CliTester
     # Creates a directory within the environment.
     # Creates parent directories if they don't exist.
     #
-    # Example: `env.make_dir("some/nested/dir")`
-    def make_dir(path : String)
-      FileUtils.mkdir_p(resolve(path))
+    # Example: `env.make_dir("some/nested/dir")` or `env.make_dir(Path["some/nested/dir"])`
+    def make_dir(path : String | Path)
+      FileUtils.mkdir_p(resolve(path.to_s))
     end
 
     # Writes content to a file within the environment.
     # Creates parent directories if they don't exist.
     # Overwrites the file if it already exists.
     #
-    # Example: `env.write_file("my_file.txt", "File content")`
-    def write_file(path : String, content : String | Bytes)
-      full_path = resolve(path)
+    # Example: `env.write_file("my_file.txt", "File content")` or `env.write_file(Path["my_file.txt"], "...")`
+    def write_file(path : String | Path, content : String | Bytes)
+      full_path = resolve(path.to_s)
       FileUtils.mkdir_p(File.dirname(full_path))
       File.write(full_path, content)
     end
@@ -98,17 +98,17 @@ module CliTester
     # Reads the content of a file within the environment.
     # Raises an exception if the file does not exist.
     #
-    # Example: `content = env.read_file("my_file.txt")`
-    def read_file(path : String) : String
-      File.read(resolve(path))
+    # Example: `content = env.read_file("my_file.txt")` or `content = env.read_file(Path["my_file.txt"])`
+    def read_file(path : String | Path) : String
+      File.read(resolve(path.to_s))
     end
 
     # Reads the content of a file within the environment as bytes.
     # Raises an exception if the file does not exist.
     #
-    # Example: `bytes = env.read_file_bytes("my_binary_file")`
-    def read_file_bytes(path : String) : Bytes
-      File.open(resolve(path), "rb") do |file|
+    # Example: `bytes = env.read_file_bytes("my_binary_file")` or `bytes = env.read_file_bytes(Path["..."])`
+    def read_file_bytes(path : String | Path) : Bytes
+      File.open(resolve(path.to_s), "rb") do |file|
         file.getb_to_end
       end
     end
@@ -116,33 +116,33 @@ module CliTester
     # Removes a file within the environment.
     # Does nothing if the file does not exist.
     #
-    # Example: `env.remove_file("my_file.txt")`
-    def remove_file(path : String)
-      FileUtils.rm_rf(resolve(path))
+    # Example: `env.remove_file("my_file.txt")` or `env.remove_file(Path["my_file.txt"])`
+    def remove_file(path : String | Path)
+      FileUtils.rm_rf(resolve(path.to_s))
     end
 
     # Removes a directory and its contents recursively within the environment.
     # Does nothing if the directory does not exist.
     #
-    # Example: `env.remove_dir("some/dir")`
-    def remove_dir(path : String)
-      FileUtils.rm_rf(resolve(path))
+    # Example: `env.remove_dir("some/dir")` or `env.remove_dir(Path["some/dir"])`
+    def remove_dir(path : String | Path)
+      FileUtils.rm_rf(resolve(path.to_s))
     end
 
     # Checks if a file or directory exists within the environment.
     #
-    # Example: `if env.exists?("my_file.txt") ...`
-    def exists?(path : String) : Bool
-      File.exists?(resolve(path))
+    # Example: `if env.exists?("my_file.txt") ...` or `if env.exists?(Path["my_file.txt"]) ...`
+    def exists?(path : String | Path) : Bool
+      File.exists?(resolve(path.to_s))
     end
 
     # Lists the names of files and directories directly within the specified
     # directory path inside the environment. Does not include "." or "..".
     # Raises an exception if the directory does not exist.
     #
-    # Example: `entries = env.ls(".")`
-    def ls(path : String) : Array(String)
-      Dir.entries(resolve(path)).reject { |entry| entry == "." || entry == ".." }
+    # Example: `entries = env.ls(".")` or `entries = env.ls(Path["."])`
+    def ls(path : String | Path) : Array(String)
+      Dir.entries(resolve(path.to_s)).reject { |entry| entry == "." || entry == ".." }
     end
 
     # Creates a configuration file within the isolated XDG_CONFIG_HOME
