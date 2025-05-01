@@ -14,20 +14,24 @@ require "./cli_tester/shard_binary" # Added
 
 # CliTester provides utilities for end-to-end testing of CLI applications.
 #
-# It automatically detects the `shard.yml` of the project being tested
-# upon being required, making project metadata available via class properties.
+# Key features:
+# - Automatic shard.yml detection and validation
+# - Isolated test environments with XDG compliance
+# - Interactive process testing
+# - Snapshot testing with output normalization
+# - YAML configuration validation (shard.yml parsing)
 #
-# Key components:
-# - `CliTester.test` - Main entry point that creates a temporary environment
-# - `Environment` - Manages temp directory and provides file/process operations
-# - `InteractiveProcess` - Controls long-running processes with I/O interaction
-# - `ExecutionResult` - Contains results of executed commands
+# The module automatically detects and validates the project's shard.yml
+# configuration on load, making project metadata available via:
+# - CliTester.root_dir
+# - CliTester.shard_file
+# - CliTester::Shard.parse (for manual validation)
 #
-# Example testing workflow:
-# 1. Create temp environment with `CliTester.test`
-# 2. Set up test files using Environment methods
-# 3. Execute commands and validate results
-# 4. Cleanup is automatic
+# Example test workflow:
+# 1. Create temp environment with CliTester.test
+# 2. Validate project configuration via CliTester::Shard
+# 3. Execute commands and validate behavior
+# 4. Automatic cleanup
 module CliTester
   # Sets up a temporary environment for a CLI test, yields it to the block,
   # and ensures cleanup afterwards.
