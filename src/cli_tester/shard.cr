@@ -27,8 +27,10 @@ module CliTester
       parser.read_stream do
         parser.read_document do
           parser.read_mapping do
-            key = parser.read_scalar? # Use read_scalar? for potentially empty mappings
-            until key.nil?
+            # Loop while the next event is a scalar (a key)
+            while parser.kind == YAML::Event::SCALAR
+              key = parser.read_scalar
+
               case key
               when "name"
                 name = parser.read_scalar
@@ -36,30 +38,34 @@ module CliTester
                 version = parser.read_scalar
               when "targets"
                 parser.read_mapping do
-                  target_name = parser.read_scalar? # Use read_scalar? for potentially empty mappings
-                  until target_name.nil?
+                  # Loop while the next event is a scalar (a target name)
+                  while parser.kind == YAML::Event::SCALAR
+                    target_name = parser.read_scalar
                     main_path = nil
+
                     parser.read_mapping do
-                      main_key = parser.read_scalar? # Use read_scalar? for potentially empty mappings
-                      until main_key.nil?
+                      # Loop while the next event is a scalar (a key within the target, e.g., "main")
+                      while parser.kind == YAML::Event::SCALAR
+                        main_key = parser.read_scalar
                         if main_key == "main"
                           main_path = parser.read_scalar
                         else
                           parser.skip # Skip unknown keys within a target definition
                         end
-                        main_key = parser.read_scalar?
                       end
+                      # End of inner mapping (target definition)
                     end
+
                     raise "Missing 'main' for target #{target_name}" unless main_path
                     targets[target_name] = Target.new(main_path)
-                    target_name = parser.read_scalar?
                   end
+                  # End of targets mapping
                 end
               else
                 parser.skip # Skip unknown top-level keys
               end
-              key = parser.read_scalar?
             end
+            # End of top-level mapping
           end
         end
       end
